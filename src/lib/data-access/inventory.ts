@@ -182,23 +182,38 @@ export async function saveGrid(
 
   const counts = { original: 0, received: 0, onHand: 0 };
 
-  // Openings: upsert non-null, delete nulls.
+  // Openings: one batched upsert + one batched delete (per-period, so an
+  // IN-list on publication_id is exact — no cross-product risk).
+  const openingUpserts: Array<{ publication_id: string; period_id: string; quantity: number; updated_by: string }> = [];
+  const openingDeletes: string[] = [];
   for (const [key, qty] of Object.entries(input.originals)) {
     const pubId = keyById.get(key);
     if (!pubId) continue;
     if (qty === null || qty === undefined) {
-      await db.from("cycle_openings").delete().eq("publication_id", pubId).eq("period_id", period.id);
+      openingDeletes.push(pubId);
       continue;
     }
-    const { error } = await db.from("cycle_openings").upsert(
-      { publication_id: pubId, period_id: period.id, quantity: qty, updated_by: actorId },
-      { onConflict: "publication_id,period_id" },
-    );
-    if (error) throw new Error("Could not save opening balances.");
-    counts.original += 1;
+    openingUpserts.push({ publication_id: pubId, period_id: period.id, quantity: qty, updated_by: actorId });
+  }
+  if (openingDeletes.length > 0) {
+    const { error } = await db
+      .from("cycle_openings")
+      .delete()
+      .eq("period_id", period.id)
+      .in("publication_id", openingDeletes);
+    if (error) throw new Error(`Could not save opening balances: ${error.message}`);
+  }
+  if (openingUpserts.length > 0) {
+    const { error } = await db.from("cycle_openings").upsert(openingUpserts, {
+      onConflict: "publication_id,period_id",
+    });
+    if (error) throw new Error(`Could not save opening balances: ${error.message}`);
+    counts.original += openingUpserts.length;
   }
 
-  // Monthly cells grouped by (publication, month).
+  // Monthly cells grouped by (publication, month): one batched upsert plus
+  // deletes resolved through record ids (an IN-list on both columns would
+  // over-delete the cross product, so ids are looked up first).
   const byCell = new Map<string, { pubId: string; monthId: string; received: Quantity; onHand: Quantity }>();
   for (const c of input.cells) {
     const pubId = keyById.get(c.key);
@@ -206,18 +221,48 @@ export async function saveGrid(
     if (!pubId || !monthId) continue;
     byCell.set(`${pubId}::${monthId}`, { pubId, monthId, received: c.received, onHand: c.onHand });
   }
+  const recordUpserts: Array<{
+    publication_id: string;
+    month_id: string;
+    received: number | null;
+    on_hand: number | null;
+    updated_by: string;
+  }> = [];
+  const deletePairs: Array<{ pubId: string; monthId: string }> = [];
   for (const { pubId, monthId, received, onHand } of byCell.values()) {
     if (received === null && onHand === null) {
-      await db.from("inventory_records").delete().eq("publication_id", pubId).eq("month_id", monthId);
+      deletePairs.push({ pubId, monthId });
       continue;
     }
-    const { error } = await db.from("inventory_records").upsert(
-      { publication_id: pubId, month_id: monthId, received, on_hand: onHand, updated_by: actorId },
-      { onConflict: "publication_id,month_id" },
-    );
-    if (error) throw new Error("Could not save inventory records.");
-    if (received !== null) counts.received += 1;
-    if (onHand !== null) counts.onHand += 1;
+    recordUpserts.push({ publication_id: pubId, month_id: monthId, received, on_hand: onHand, updated_by: actorId });
+  }
+  if (deletePairs.length > 0) {
+    const pubIds = [...new Set(deletePairs.map((d) => d.pubId))];
+    const monthIds = [...new Set(deletePairs.map((d) => d.monthId))];
+    const { data: existing, error: selError } = await db
+      .from("inventory_records")
+      .select("id, publication_id, month_id")
+      .in("publication_id", pubIds)
+      .in("month_id", monthIds);
+    if (selError) throw new Error(`Could not save inventory records: ${selError.message}`);
+    const wanted = new Set(deletePairs.map((d) => `${d.pubId}::${d.monthId}`));
+    const ids = (existing ?? [])
+      .filter((r) => wanted.has(`${r.publication_id as string}::${r.month_id as string}`))
+      .map((r) => r.id as string);
+    if (ids.length > 0) {
+      const { error } = await db.from("inventory_records").delete().in("id", ids);
+      if (error) throw new Error(`Could not save inventory records: ${error.message}`);
+    }
+  }
+  if (recordUpserts.length > 0) {
+    const { error } = await db.from("inventory_records").upsert(recordUpserts, {
+      onConflict: "publication_id,month_id",
+    });
+    if (error) throw new Error(`Could not save inventory records: ${error.message}`);
+    for (const u of recordUpserts) {
+      if (u.received !== null) counts.received += 1;
+      if (u.on_hand !== null) counts.onHand += 1;
+    }
   }
 
   await db.from("audit_events").insert({

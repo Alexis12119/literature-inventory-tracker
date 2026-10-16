@@ -40,9 +40,9 @@ with the backend milestone.
 
 - **Inventory workspace** (`/inventory`) — desktop 21-column grid with sticky
   identity columns and sticky headers, mobile single-month cards. Blank stays
-  blank, `0` stays `0`, `Moved` is computed and read-only. Autosaves after a
-  pause (failed saves surface a retry); switching cycle or language flushes
-  pending edits first.
+  blank, `0` stays `0`, `Moved` is computed and read-only. Explicit Save
+  with Unsaved/Saved status (failed saves surface a retry); switching cycle
+  or language saves first and blocks on failure.
 - **Continuous cycles** — Mar–Aug / Sep–Feb reporting cycles from March 2024
   onward, English and Tagalog kept separate. The `+` button extends coverage
   to the next service year on demand.
