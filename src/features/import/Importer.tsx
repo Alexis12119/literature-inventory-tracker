@@ -325,7 +325,7 @@ export function ImportDialog({
           )}
         </div>
         {progress && (
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3" role="status" aria-live="polite">
+          <div className="sticky bottom-0 z-10 rounded-lg border border-zinc-200 bg-white p-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]" role="status" aria-live="polite">
             <div className="flex items-baseline justify-between gap-2 text-sm">
               <p className="font-medium">
                 {applyDone
