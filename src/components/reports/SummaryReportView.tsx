@@ -31,15 +31,15 @@ export function SummaryReportView({
       </p>
 
       <table className="mt-3 w-full border-collapse text-sm">
-        <thead>
-          <tr className="bg-zinc-100">
-            <th scope="col" className="border border-zinc-400 px-2 py-1.5 text-left text-xs font-bold">
+        <thead className="sticky top-0 z-10">
+          <tr>
+            <th scope="col" className="border border-zinc-400 bg-zinc-100 px-2 py-1.5 text-left text-xs font-bold">
               Item
             </th>
-            <th scope="col" className="w-28 border border-zinc-400 px-2 py-1.5 text-center text-xs font-bold">
+            <th scope="col" className="w-28 border border-zinc-400 bg-zinc-100 px-2 py-1.5 text-center text-xs font-bold">
               Current Quantity on Hand
             </th>
-            <th scope="col" className="w-28 border border-zinc-400 px-2 py-1.5 text-center text-xs font-bold">
+            <th scope="col" className="w-28 border border-zinc-400 bg-zinc-100 px-2 py-1.5 text-center text-xs font-bold">
               Average Monthly Movement
             </th>
           </tr>

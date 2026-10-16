@@ -22,6 +22,16 @@ describe("dashboard analytics", () => {
     expect(isGridEmpty(fixture().grid)).toBe(false);
   });
 
+  it("handles an empty focus month without breaking", () => {
+    const { grid } = fixture();
+    const stats = computeCycleStats(grid, "Feb/Aug");
+    expect(stats.counted).toBe(0);
+    expect(stats.missing).toBe(CATALOG.length);
+    expect(stats.completionPct).toBe(0);
+    expect(stats.topMovers).toEqual([]);
+    expect(stats.months).toHaveLength(6);
+  });
+
   it("computes focus-month totals from counted rows only", () => {
     const { grid } = fixture();
     const stats = computeCycleStats(grid, "Sep/Mar");

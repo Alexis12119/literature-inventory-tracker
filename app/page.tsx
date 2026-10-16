@@ -11,58 +11,67 @@ import {
   Plus,
   TrendingUp,
 } from "lucide-react";
-import { Badge, Button, EmptyState, Select, StickyBar } from "@/src/components/ui/controls";
-import { blankGrid, type InventoryGrid, type LanguageCode } from "@/src/features/inventory/store";
-import { useCarriedOriginals } from "@/src/features/inventory/carry";
-import { useCatalog } from "@/src/features/catalog/store";
+import { Button, EmptyState, Select, StickyBar } from "@/src/components/ui/controls";
+import type { InventoryGrid, LanguageCode } from "@/src/features/inventory/store";
 import { useCycles } from "@/src/features/inventory/cycles";
 import { MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
 import { computeCycleStats, isGridEmpty } from "@/src/features/dashboard/analytics";
 import { CategoryBars, CompletionBar, TrendChart } from "@/src/features/dashboard/Charts";
 import { SuggestionsCard } from "@/src/features/ordering/SuggestionsCard";
+import { getInventoryGrid, type GridPayload } from "@/src/features/inventory/actions";
+import { listRecentActivity } from "@/src/features/settings/actions";
 
 interface ActivityEntry {
-  at: string;
+  id: number;
+  actor: string | null;
   action: string;
   detail: string;
+  at: string;
 }
 
 export default function DashboardPage() {
   const { cycles, selectedId: cycle, setSelectedId: setCycle, addServiceYear, canAddMore } = useCycles();
   const [lang, setLang] = useState<LanguageCode>("tl");
   const [focusMonth, setFocusMonth] = useState<MonthGroup>(MONTH_GROUPS[5]);
-  const [grid, setGrid] = useState<InventoryGrid | null>(null);
+  const [payload, setPayload] = useState<GridPayload | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
-  const carried = useCarriedOriginals(cycle, lang);
-  const catalog = useCatalog();
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.resolve().then(() => {
-      if (cancelled) return;
+    (async () => {
       try {
-        const raw = window.localStorage.getItem(`litinv:grid:${cycle}:${lang}`);
-        setGrid(raw ? (JSON.parse(raw) as InventoryGrid) : blankGrid());
-        const log = window.localStorage.getItem("litinv:activity");
-        setActivity(log ? (JSON.parse(log) as ActivityEntry[]).slice(0, 5) : []);
-      } catch {
-        setGrid(blankGrid());
+        const [grid, log] = await Promise.all([
+          getInventoryGrid(cycle, lang),
+          listRecentActivity(5),
+        ]);
+        if (cancelled) return;
+        setPayload(grid);
+        setActivity(log);
+        setLoadError(null);
+      } catch (e) {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : "Could not load the dashboard.");
       }
-    });
+    })();
     return () => {
       cancelled = true;
     };
   }, [cycle, lang]);
 
-  const stats = grid && !isGridEmpty(grid) ? computeCycleStats(grid, focusMonth, carried.values, catalog.rows) : null;
+  const grid: InventoryGrid | null = payload
+    ? { original: payload.original, months: payload.cells }
+    : null;
+  const stats =
+    grid && !isGridEmpty(grid)
+      ? computeCycleStats(grid, focusMonth, payload?.carried.values ?? {}, payload?.rows ?? [])
+      : null;
   const activeCycle = cycles.find((c) => c.id === cycle);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 py-4">
       <StickyBar className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-lg font-bold tracking-tight">Dashboard</h1>
-          <Badge tone="neutral">Local preview data</Badge>
           <Link
             href="/inventory"
             className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-700 px-3 text-xs font-medium text-white hover:bg-blue-800"
@@ -70,7 +79,7 @@ export default function DashboardPage() {
             Continue entry <ArrowRight size={14} aria-hidden />
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-200 bg-white p-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-3">
           <div className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
             <span id="dash-cycle-label">Reporting cycle</span>
             <div className="flex gap-1" role="group" aria-labelledby="dash-cycle-label">
@@ -128,7 +137,12 @@ export default function DashboardPage() {
         </div>
       </StickyBar>
 
-      {grid === null ? (
+      {loadError ? (
+        <div role="alert" className="flex flex-col items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-8 text-center">
+          <p className="text-sm font-semibold">Could not load the dashboard</p>
+          <p className="text-sm text-zinc-500">{loadError}</p>
+        </div>
+      ) : grid === null ? (
         <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading dashboard">
           <div className="h-24 animate-pulse rounded-lg border border-zinc-200 bg-white" />
           <div className="h-56 animate-pulse rounded-lg border border-zinc-200 bg-white" />
@@ -188,20 +202,18 @@ export default function DashboardPage() {
             </section>
           </div>
 
-          {/* Trend */}
-          <section className="rounded-lg border border-zinc-200 bg-white p-4" aria-label="Movement trend">
-            <h2 className="text-sm font-semibold">
-              Movement trend · {activeCycle?.label} · {lang === "tl" ? "Tagalog" : "English"}
-            </h2>
-            <p className="text-xs text-zinc-500">Received vs moved per month group, from saved counts only.</p>
-            <div className="mt-2">
-              <TrendChart months={stats.months} />
-            </div>
-          </section>
+          {/* Performance: trend alongside top movers */}
+          <div className="grid gap-3 lg:grid-cols-3">
+            <section className="rounded-lg border border-zinc-200 bg-white p-4 lg:col-span-2" aria-label="Movement trend">
+              <h2 className="text-sm font-semibold">
+                Movement trend · {activeCycle?.label} · {lang === "tl" ? "Tagalog" : "English"}
+              </h2>
+              <p className="text-xs text-zinc-500">Received vs moved per month group, from saved counts only.</p>
+              <div className="mt-2">
+                <TrendChart months={stats.months} />
+              </div>
+            </section>
 
-          <SuggestionsCard cycleId={cycle} lang={lang} grid={grid} rows={catalog.rows} focusMonth={focusMonth} />
-
-          <div className="grid gap-3 lg:grid-cols-2">
             {/* Top movers */}
             <section className="rounded-lg border border-zinc-200 bg-white p-4" aria-label="Top movers">
               <h2 className="text-sm font-semibold">Top movers · {focusMonth}</h2>
@@ -233,43 +245,46 @@ export default function DashboardPage() {
                 </div>
               )}
             </section>
-
-            <div className="flex flex-col gap-3">
-              {/* Categories */}
-              <section className="rounded-lg border border-zinc-200 bg-white p-4" aria-label="Movement by category">
-                <h2 className="text-sm font-semibold">Movement by category · {focusMonth}</h2>
-                <div className="mt-2">
-                  <CategoryBars categories={stats.categories} />
-                </div>
-              </section>
-              {/* Activity */}
-              <section className="rounded-lg border border-zinc-200 bg-white p-4" aria-label="Recent activity">
-                <h2 className="flex items-center gap-1.5 text-sm font-semibold">
-                  <History size={14} aria-hidden /> Recent activity
-                </h2>
-                {activity.length === 0 ? (
-                  <p className="mt-1 text-sm text-zinc-500">No saves recorded yet in this browser.</p>
-                ) : (
-                  <ol className="mt-2 flex flex-col gap-1.5">
-                    {activity.map((e, i) => (
-                      <li key={`${e.at}-${i}`} className="text-sm">
-                        <span className="font-medium">{e.detail}</span>{" "}
-                        <span className="text-xs text-zinc-500">{new Date(e.at).toLocaleString()}</span>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-                <Link href="/activity" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
-                  Full history <ArrowRight size={12} aria-hidden />
-                </Link>
-              </section>
-            </div>
           </div>
 
+          {/* Ordering: suggestions alongside category breakdown */}
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <SuggestionsCard cycleId={cycle} grid={grid} rows={payload?.rows ?? []} carried={payload?.carried.values ?? {}} focusMonth={focusMonth} />
+            </div>
+            <section className="rounded-lg border border-zinc-200 bg-white p-4" aria-label="Movement by category">
+              <h2 className="text-sm font-semibold">Movement by category · {focusMonth}</h2>
+              <div className="mt-2">
+                <CategoryBars categories={stats.categories} />
+              </div>
+            </section>
+          </div>
+
+          {/* Activity */}
+          <section className="rounded-lg border border-zinc-200 bg-white p-4" aria-label="Recent activity">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+              <History size={14} aria-hidden /> Recent activity
+            </h2>
+            {activity.length === 0 ? (
+              <p className="mt-1 text-sm text-zinc-500">No activity recorded yet.</p>
+            ) : (
+              <ol className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                {activity.map((e) => (
+                  <li key={e.id} className="rounded-md bg-zinc-50 px-2.5 py-1.5 text-sm">
+                    <span className="font-medium">{e.detail}</span>{" "}
+                    <span className="text-xs text-zinc-500">{new Date(e.at).toLocaleString()}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+            <Link href="/activity" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
+              Full history <ArrowRight size={12} aria-hidden />
+            </Link>
+          </section>
+
           <p className="text-xs text-zinc-500">
-            Figures are computed from your saved local workspace for {activeCycle?.label} (
-            {lang === "tl" ? "Tagalog" : "English"}). Server-side metrics arrive with the backend
-            milestone.
+            Figures are computed from the shared database for {activeCycle?.label} (
+            {lang === "tl" ? "Tagalog" : "English"}).
           </p>
         </>
       )}

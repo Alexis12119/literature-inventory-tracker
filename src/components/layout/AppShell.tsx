@@ -11,9 +11,12 @@ import {
   LayoutDashboard,
   Menu,
   Settings,
+  Users,
   X,
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+import { SignOutButton } from "@/src/components/auth/SignOutButton";
+import { SessionProvider, type ShellUser } from "@/src/components/auth/session";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -24,11 +27,20 @@ const NAV = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+const ADMIN_NAV = [{ href: "/users", label: "Users", icon: Users }];
+
+function roleLabel(role: ShellUser["role"]): string {
+  if (role === "administrator") return "Administrator";
+  if (role === "literature_servant") return "Literature servant";
+  return "Account";
+}
+
+function NavLinks({ onNavigate, admin }: { onNavigate?: () => void; admin: boolean }) {
   const pathname = usePathname();
+  const items = admin ? [...NAV, ...ADMIN_NAV] : NAV;
   return (
     <nav aria-label="Primary" className="flex flex-col gap-1">
-      {NAV.map(({ href, label, icon: Icon }) => {
+      {items.map(({ href, label, icon: Icon }) => {
         const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
         return (
           <Link
@@ -52,11 +64,25 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, user }: { children: ReactNode; user: ShellUser | null }) {
   const [open, setOpen] = useState(false);
+  const isAdmin = user?.role === "administrator";
+  // Logged-out visitors only ever see public pages (sign-in, register,
+  // pending) — full-width with no sidebar or navigation. Pages center
+  // their own cards; the frame stays out of the way.
+  if (!user) {
+    return (
+      <SessionProvider value={null}>
+        <div className="flex min-h-dvh flex-col bg-zinc-100 text-zinc-900">
+          <main className="flex w-full flex-1 items-center px-3 py-6 sm:px-5 md:px-8">{children}</main>
+        </div>
+      </SessionProvider>
+    );
+  }
   return (
     /* Viewport-locked frame: the page itself never scrolls — only the main
        column does — so no outer area is ever visible past the content. */
+    <SessionProvider value={user}>
     <div className="app-shell flex h-dvh overflow-hidden bg-zinc-100 text-zinc-900">
       {/* Desktop sidebar: fills the frame height with its own scroll. */}
       <aside className="no-print hidden h-full w-60 shrink-0 flex-col gap-4 overflow-y-auto border-r border-zinc-200 bg-white p-4 md:flex">
@@ -64,10 +90,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="text-sm font-bold tracking-tight">Literature Inventory</p>
           <p className="text-xs text-zinc-500">Monthly Movement tracker</p>
         </div>
-        <NavLinks />
-        <div className="mt-auto rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600">
-          <p className="font-semibold text-zinc-800">Frontend preview</p>
-          <p>Server sync arrives with the backend milestone. Entries save locally.</p>
+        <NavLinks admin={isAdmin} />
+        <div className="mt-auto flex flex-col gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600">
+          <p className="font-semibold text-zinc-800">{user.displayName}</p>
+          <p>{roleLabel(user.role)}</p>
+          <SignOutButton compact />
         </div>
       </aside>
 
@@ -83,15 +110,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
           <p className="text-sm font-bold">Literature Inventory</p>
+          <span className="ml-auto">{user ? <SignOutButton compact /> : null}</span>
         </header>
         {open ? (
           <div className="no-print border-b border-zinc-200 bg-white p-3 md:hidden">
-            <NavLinks onNavigate={() => setOpen(false)} />
+            <NavLinks onNavigate={() => setOpen(false)} admin={isAdmin} />
           </div>
         ) : null}
 
-        <main className="app-main min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-4 sm:px-5 md:px-8">{children}</main>
+        <main className="app-main min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain px-3 sm:px-5 md:px-8">{children}</main>
       </div>
     </div>
+    </SessionProvider>
   );
 }

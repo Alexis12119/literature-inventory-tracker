@@ -1,32 +1,80 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pencil, Plus, Tags, X } from "lucide-react";
-import { SECTIONS } from "@/src/lib/reports/template";
 import { Badge, Button, EmptyState, Input, Select, StickyBar } from "@/src/components/ui/controls";
-import { sectionCounts, useCatalog } from "@/src/features/catalog/store";
-
-type EditTarget =
-  | { kind: "add" }
-  | { kind: "local"; index: number }
-  | { kind: "catalog"; key: string };
+import { useDebouncedValue } from "@/src/lib/use-debounced-value";
+import { useIsAdmin } from "@/src/components/auth/session";
+import type { LanguageCode } from "@/src/features/inventory/store";
+import type { CatalogRow } from "@/src/lib/data-access/catalog";
+import {
+  adminCreateCategory,
+  adminCreatePublication,
+  adminDeleteCategory,
+  adminRenameCategory,
+  adminSetCategoryActive,
+  adminSetPublicationActive,
+  adminUpdatePublication,
+  listCatalogPublic,
+} from "@/src/features/publications/actions";
 
 const BLANK_FORM = { itemNo: "", name: "", code: "", section: "Books" };
 
+type EditTarget =
+  | { kind: "add" }
+  | { kind: "edit"; key: string };
+
+interface SectionRow {
+  raw: string;
+  display: string;
+  isCustom: boolean;
+  hidden: boolean;
+  count: number;
+}
+
 export default function PublicationsPage() {
-  const catalog = useCatalog();
+  const canManage = useIsAdmin();
+  const [lang, setLang] = useState<LanguageCode>("tl");
+  const [rows, setRows] = useState<CatalogRow[]>([]);
+  const [sections, setSections] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 250);
   const [section, setSection] = useState("all");
   const [showArchived, setShowArchived] = useState(false);
   const [form, setForm] = useState(BLANK_FORM);
   const [dialog, setDialog] = useState<null | EditTarget>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [catOpen, setCatOpen] = useState(false);
   const [newSection, setNewSection] = useState("");
   const [catError, setCatError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
-  const q = search.trim().toLowerCase();
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await listCatalogPublic(lang, showArchived);
+      setRows(data.rows);
+      setSections(data.sections);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Could not load the catalog.");
+    } finally {
+      setLoading(false);
+    }
+  }, [lang, showArchived]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) void refresh();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [refresh]);
 
   useEffect(() => {
     if (!dialog && !catOpen) return;
@@ -40,73 +88,120 @@ export default function PublicationsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [dialog, catOpen]);
 
+  const q = debouncedSearch.trim().toLowerCase();
   const visible = useMemo(
     () =>
-      catalog.rows.filter((r) => {
+      rows.filter((r) => {
         if (section !== "all" && r.section !== section) return false;
         if (q && !`${r.itemNo ?? ""} ${r.name} ${r.code ?? ""}`.toLowerCase().includes(q)) return false;
-        if (!showArchived && catalog.archivedKeys.has(r.key)) return false;
         return true;
       }),
-    [catalog.rows, catalog.archivedKeys, section, q, showArchived],
+    [rows, section, q],
   );
 
-  const counts = useMemo(() => sectionCounts(catalog.rows), [catalog.rows]);
-  const sectionRows = useMemo(() => {
-    const raws: string[] = [...SECTIONS];
-    for (const c of catalog.customs) {
-      if (!raws.some((s) => s.toLowerCase() === c.toLowerCase())) raws.push(c);
-    }
-    return raws.map((raw) => {
-      const isCustom = !SECTIONS.some((s) => s.toLowerCase() === raw.toLowerCase());
-      const display = isCustom ? raw : (catalog.renames[raw] ?? raw);
-      const hidden = catalog.hidden.some((h) => h.toLowerCase() === raw.toLowerCase());
-      return { raw, display, isCustom, hidden, count: counts[display] ?? 0 };
-    });
-  }, [catalog.customs, catalog.renames, catalog.hidden, counts]);
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const r of rows) c[r.section] = (c[r.section] ?? 0) + 1;
+    return c;
+  }, [rows]);
+
+  const sectionRows: SectionRow[] = useMemo(
+    () =>
+      sections.map((s) => ({
+        raw: s,
+        display: s,
+        isCustom: false,
+        hidden: false,
+        count: counts[s] ?? 0,
+      })),
+    [sections, counts],
+  );
 
   const openAdd = () => {
-    setForm({ ...BLANK_FORM, section: section === "all" ? "Books" : section });
+    setForm({ ...BLANK_FORM, section: section === "all" ? sections[0] ?? "Books" : section });
+    setFormError(null);
     setDialog({ kind: "add" });
   };
 
   const closeDialog = () => {
     setDialog(null);
     setForm(BLANK_FORM);
+    setFormError(null);
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = form.name.trim();
     if (!name) return;
-    if (dialog?.kind === "local") {
-      catalog.updateLocal(dialog.index, { ...form, name });
-    } else if (dialog?.kind === "catalog") {
-      catalog.saveOverride(dialog.key, { ...form, name });
-    } else {
-      catalog.addLocal({ ...form, name });
+    const input = {
+      itemNo: form.itemNo.trim() || null,
+      name,
+      code: form.code.trim() || null,
+      category: form.section,
+    };
+    try {
+      if (dialog?.kind === "edit") {
+        const current = rows.find((r) => r.key === dialog.key);
+        if (!current) throw new Error("Publication not found.");
+        const parts = current.key.split("::");
+        await adminUpdatePublication(
+          lang,
+          { itemNo: current.itemNo, name: parts.slice(2).join("::") || current.name, section: current.section },
+          input,
+        );
+      } else {
+        await adminCreatePublication(lang, input);
+      }
+      closeDialog();
+      await refresh();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Could not save.");
     }
-    closeDialog();
   };
 
-  const isEditing = dialog !== null && dialog.kind !== "add";
+  const runCategory = async (fn: () => Promise<void>) => {
+    setCatError(null);
+    try {
+      await fn();
+      await refresh();
+    } catch (err) {
+      setCatError(err instanceof Error ? err.message : "Could not update categories.");
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 py-4">
       <StickyBar className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-lg font-bold tracking-tight">Publications</h1>
-          <Badge tone="neutral">Frontend preview · catalog edits stay local</Badge>
-          <span className="ml-auto flex gap-2">
-            <Button variant="secondary" onClick={() => { setCatError(null); setCatOpen(true); }}>
-              <Tags size={15} aria-hidden /> Categories
-            </Button>
-            <Button onClick={openAdd}>
-              <Plus size={15} aria-hidden /> Add publication
-            </Button>
-          </span>
+          <div className="flex overflow-hidden rounded-md border border-zinc-300" role="group" aria-label="Language">
+            {(["en", "tl"] as LanguageCode[]).map((l) => (
+              <button
+                key={l}
+                type="button"
+                aria-pressed={lang === l}
+                onClick={() => {
+                  setLang(l);
+                  setSection("all");
+                }}
+                className={`h-8 px-3 text-xs font-medium ${lang === l ? "bg-blue-700 text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
+              >
+                {l === "en" ? "English" : "Tagalog"}
+              </button>
+            ))}
+          </div>
+          {canManage && (
+            <span className="ml-auto flex gap-2">
+              <Button variant="secondary" onClick={() => { setCatError(null); setCatOpen(true); }}>
+                <Tags size={15} aria-hidden /> Categories
+              </Button>
+              <Button onClick={openAdd}>
+                <Plus size={15} aria-hidden /> Add publication
+              </Button>
+            </span>
+          )}
         </div>
-        <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-200 bg-white p-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-3">
           <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
             Search
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, item, code…" aria-label="Catalog search" />
@@ -115,7 +210,7 @@ export default function PublicationsPage() {
             Category
             <Select value={section} onChange={(e) => setSection(e.target.value)} aria-label="Category filter">
               <option value="all">All categories</option>
-              {catalog.sections.map((s) => (
+              {sections.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </Select>
@@ -132,21 +227,20 @@ export default function PublicationsPage() {
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center"
           role="dialog"
           aria-modal="true"
-          aria-label={isEditing ? "Edit publication" : "Add publication"}
+          aria-label={dialog.kind === "edit" ? "Edit publication" : "Add publication"}
           onClick={closeDialog}
         >
           <form
             className="flex max-h-[85vh] w-full max-w-lg flex-col gap-3 overflow-y-auto rounded-lg bg-white p-4"
             onClick={(e) => e.stopPropagation()}
-            onSubmit={submit}
+            onSubmit={(e) => void submit(e)}
           >
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold">{isEditing ? "Edit publication" : "Add publication"}</h2>
-              <span className="text-xs text-zinc-500">local only</span>
+              <h2 className="text-base font-bold">{dialog.kind === "edit" ? "Edit publication" : "Add publication"}</h2>
               <button
                 type="button"
                 onClick={closeDialog}
-                aria-label={isEditing ? "Close edit publication dialog" : "Close add publication dialog"}
+                aria-label="Close dialog"
                 className="ml-auto rounded-md p-1.5 hover:bg-zinc-100"
               >
                 <X size={18} aria-hidden />
@@ -157,10 +251,13 @@ export default function PublicationsPage() {
               <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">Code<Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></label>
             </div>
             <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">Name *<Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required autoFocus /></label>
-            <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">Category<Select value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })}>{catalog.sections.map((s) => (<option key={s} value={s}>{s}</option>))}</Select></label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">Category<Select value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })}>{sections.map((s) => (<option key={s} value={s}>{s}</option>))}</Select></label>
+            {formError && (
+              <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{formError}</p>
+            )}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={closeDialog}>Cancel</Button>
-              <Button type="submit">{isEditing ? "Save changes" : "Add to list"}</Button>
+              <Button type="submit">{dialog.kind === "edit" ? "Save changes" : "Add to list"}</Button>
             </div>
           </form>
         </div>
@@ -179,7 +276,7 @@ export default function PublicationsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold">Categories</h2>
+              <h2 className="text-base font-bold">Categories · {lang === "tl" ? "Tagalog" : "English"}</h2>
               <button
                 type="button"
                 onClick={() => setCatOpen(false)}
@@ -190,17 +287,16 @@ export default function PublicationsPage() {
               </button>
             </div>
             <p className="text-xs text-zinc-500">
-              Hiding keeps every quantity (restore anytime). Deleting is only for empty custom
-              categories. Renames apply everywhere except the official report, which keeps the
-              original wording.
+              Hiding keeps every quantity (restore anytime). Deleting is only for empty
+              categories. Renames never break saved inventory.
             </p>
             <form
               className="flex gap-2"
               onSubmit={(e) => {
                 e.preventDefault();
-                const err = catalog.addSection(newSection);
-                setCatError(err);
-                if (!err) setNewSection("");
+                const name = newSection.trim();
+                if (!name) return;
+                void runCategory(() => adminCreateCategory(lang, name)).then(() => setNewSection(""));
               }}
             >
               <Input
@@ -213,9 +309,7 @@ export default function PublicationsPage() {
               <Button type="submit">Add</Button>
             </form>
             {catError && (
-              <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">
-                {catError}
-              </p>
+              <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{catError}</p>
             )}
             <ul className="flex flex-col gap-1.5">
               {sectionRows.map((s) => (
@@ -225,66 +319,28 @@ export default function PublicationsPage() {
                       className="flex gap-2"
                       onSubmit={(e) => {
                         e.preventDefault();
-                        const err = catalog.renameSection(s.raw, renameValue);
-                        setCatError(err);
-                        if (!err) setRenaming(null);
+                        void runCategory(() => adminRenameCategory(lang, s.raw, renameValue)).then(() => setRenaming(null));
                       }}
                     >
-                      <Input
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        aria-label={`Rename ${s.display}`}
-                        autoFocus
-                        className="h-8 flex-1"
-                      />
+                      <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} aria-label={`Rename ${s.display}`} autoFocus className="h-8 flex-1" />
                       <Button type="submit" className="h-8">Save</Button>
-                      <Button type="button" variant="secondary" className="h-8" onClick={() => setRenaming(null)}>
-                        Cancel
-                      </Button>
+                      <Button type="button" variant="secondary" className="h-8" onClick={() => setRenaming(null)}>Cancel</Button>
                     </form>
                   ) : (
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold">
-                        {s.display}
-                        {s.display !== s.raw && <span className="ml-1 text-xs font-normal text-zinc-400">was {s.raw}</span>}
-                      </span>
+                      <span className="text-sm font-semibold">{s.display}</span>
                       <span className="text-xs text-zinc-500 tabular-nums">{s.count} items</span>
-                      {s.hidden && <Badge tone="neutral">hidden</Badge>}
-                      {s.isCustom && <Badge tone="info">custom</Badge>}
                       <span className="ml-auto inline-flex gap-1.5">
+                        <button type="button" onClick={() => { setRenaming(s.raw); setRenameValue(s.display); setCatError(null); }} className="rounded-md border border-zinc-300 px-2 py-1 text-xs font-medium hover:bg-zinc-50">Rename</button>
+                        <button type="button" onClick={() => void runCategory(() => adminSetCategoryActive(lang, s.raw, false))} className="rounded-md border border-zinc-300 px-2 py-1 text-xs font-medium hover:bg-zinc-50">Hide</button>
                         <button
                           type="button"
-                          onClick={() => { setRenaming(s.raw); setRenameValue(s.display); setCatError(null); }}
-                          className="rounded-md border border-zinc-300 px-2 py-1 text-xs font-medium hover:bg-zinc-50"
+                          onClick={() => void runCategory(() => adminDeleteCategory(lang, s.raw))}
+                          title="Only empty categories can be deleted"
+                          className="rounded-md border border-red-300 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
                         >
-                          Rename
+                          Delete
                         </button>
-                        {s.hidden ? (
-                          <button
-                            type="button"
-                            onClick={() => catalog.restoreSection(s.raw)}
-                            className="rounded-md border border-zinc-300 px-2 py-1 text-xs font-medium hover:bg-zinc-50"
-                          >
-                            Restore
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => catalog.hideSection(s.raw)}
-                            className="rounded-md border border-zinc-300 px-2 py-1 text-xs font-medium hover:bg-zinc-50"
-                          >
-                            Hide
-                          </button>
-                        )}
-                        {s.isCustom && (
-                          <button
-                            type="button"
-                            onClick={() => setCatError(catalog.deleteSection(s.raw))}
-                            className="rounded-md border border-red-300 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
-                          >
-                            Delete
-                          </button>
-                        )}
                       </span>
                     </div>
                   )}
@@ -295,110 +351,74 @@ export default function PublicationsPage() {
         </div>
       ) : null}
 
-      {visible.length === 0 ? (
+      {loading ? (
+        <div className="flex flex-col gap-2" aria-busy="true" aria-label="Loading catalog">
+          <div className="h-16 animate-pulse rounded-lg border border-zinc-200 bg-white" />
+          <div className="h-64 animate-pulse rounded-lg border border-zinc-200 bg-white" />
+        </div>
+      ) : loadError ? (
+        <div role="alert" className="flex flex-col items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-8 text-center">
+          <p className="text-sm font-semibold">Could not load the catalog</p>
+          <p className="text-sm text-zinc-500">{loadError}</p>
+          <Button variant="secondary" onClick={() => void refresh()}>Retry</Button>
+        </div>
+      ) : visible.length === 0 ? (
         <EmptyState title="No publications found" hint="Adjust the search or category filter." />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
-          <table className="w-full min-w-xl border-collapse text-sm">
-            <thead>
+        <div className="max-h-[70vh] overflow-auto overscroll-contain rounded-lg border border-zinc-200 bg-white" role="region" aria-label="Publication catalog" tabIndex={0}>
+          <table className="w-full min-w-xl border-separate border-spacing-0 text-sm">
+            <thead className="sticky top-0 z-10">
               <tr className="bg-zinc-900 text-left text-white">
-                <th scope="col" className="px-3 py-2 text-xs font-semibold">Item No.</th>
-                <th scope="col" className="px-3 py-2 text-xs font-semibold">Name</th>
-                <th scope="col" className="px-3 py-2 text-xs font-semibold">Category</th>
-                <th scope="col" className="px-3 py-2 text-xs font-semibold"><span className="sr-only">Actions</span></th>
+                <th scope="col" className="border-b border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold">Item No.</th>
+                <th scope="col" className="border-b border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold">Name</th>
+                <th scope="col" className="border-b border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold">Category</th>
+                {canManage && <th scope="col" className="border-b border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold"><span className="sr-only">Actions</span></th>}
               </tr>
             </thead>
             <tbody>
-              {visible.map((r) => {
-                const isArch = catalog.archivedKeys.has(r.key);
-                const edited = catalog.overrides[r.key] !== undefined;
-                const isLocal = r.key.startsWith("local::");
-                return (
-                  <tr key={r.key} className={`border-t border-zinc-200 ${isLocal ? "border-dashed border-blue-300 bg-blue-50/40" : ""}`}>
-                    <td className="px-3 py-1.5 text-zinc-600">{r.itemNo || "—"}</td>
-                    <td className="px-3 py-1.5 font-medium">
-                      {r.name}
-                      {r.code ? <span className="ml-1 text-xs text-zinc-400">{r.code}</span> : null}
-                      {isArch ? <Badge tone="neutral" className="ml-2">archived</Badge> : null}
-                      {edited ? <Badge tone="info" className="ml-2">edited</Badge> : null}
-                      {isLocal ? <Badge tone="info" className="ml-2">local</Badge> : null}
-                    </td>
-                    <td className="px-3 py-1.5 text-zinc-600">{r.section}</td>
-                    <td className="px-3 py-1.5 text-right">
+              {visible.map((r) => (
+                <tr key={r.key} className="bg-white">
+                  <td className="border-b border-zinc-200 px-3 py-1.5 text-zinc-600">{r.itemNo || "—"}</td>
+                  <td className="border-b border-zinc-200 px-3 py-1.5 font-medium">
+                    {r.name}
+                    {r.code ? <span className="ml-1 text-xs text-zinc-400">{r.code}</span> : null}
+                    {!r.active ? <Badge tone="neutral" className="ml-2">archived</Badge> : null}
+                  </td>
+                  <td className="border-b border-zinc-200 px-3 py-1.5 text-zinc-600">{r.section}</td>
+                  {canManage && (
+                    <td className="border-b border-zinc-200 px-3 py-1.5 text-right">
                       <span className="inline-flex gap-1.5">
                         <button
                           type="button"
                           onClick={() => {
-                            if (isLocal) {
-                              const index = catalog.local.findIndex(
-                                (p) => `local::${p.itemNo}::${p.name}` === r.key,
-                              );
-                              const p = catalog.local[index];
-                              if (p) {
-                                setForm({ itemNo: p.itemNo, name: p.name, code: p.code, section: p.section });
-                                setDialog({ kind: "local", index });
-                              }
-                            } else {
-                              setForm({ itemNo: r.itemNo ?? "", name: r.name, code: r.code ?? "", section: r.section });
-                              setDialog({ kind: "catalog", key: r.key });
-                            }
+                            setForm({ itemNo: r.itemNo ?? "", name: r.name, code: r.code ?? "", section: r.section });
+                            setFormError(null);
+                            setDialog({ kind: "edit", key: r.key });
                           }}
                           aria-label={`Edit ${r.name}`}
                           className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs font-medium hover:bg-zinc-50"
                         >
                           <Pencil size={12} aria-hidden /> Edit
                         </button>
-                        {edited ? (
-                          <button
-                            type="button"
-                            onClick={() => catalog.resetOverride(r.key)}
-                            title="Revert to the official catalog entry"
-                            className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs font-medium hover:bg-zinc-50"
-                          >
-                            Reset
-                          </button>
-                        ) : null}
-                        {isLocal ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const index = catalog.local.findIndex(
-                                  (p) => `local::${p.itemNo}::${p.name}` === r.key,
-                                );
-                                if (index >= 0) catalog.toggleLocalArchived(index);
-                              }}
-                              className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs font-medium hover:bg-zinc-50"
-                            >
-                              {isArch ? "Restore" : "Archive"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const index = catalog.local.findIndex(
-                                  (p) => `local::${p.itemNo}::${p.name}` === r.key,
-                                );
-                                if (index >= 0) catalog.removeLocal(index);
-                              }}
-                              className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs font-medium hover:bg-zinc-50"
-                            >
-                              Remove
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => catalog.toggleArchive(r.key)}
-                            className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs font-medium hover:bg-zinc-50"
-                          >
-                            {isArch ? "Restore" : "Archive"}
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const parts = r.key.split("::");
+                            void adminSetPublicationActive(lang, {
+                              itemNo: r.itemNo,
+                              name: parts.slice(2).join("::") || r.name,
+                              section: r.section,
+                            }, !r.active).then(() => void refresh());
+                          }}
+                          className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs font-medium hover:bg-zinc-50"
+                        >
+                          {r.active ? "Archive" : "Restore"}
+                        </button>
                       </span>
                     </td>
-                  </tr>
-                );
-              })}
+                  )}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

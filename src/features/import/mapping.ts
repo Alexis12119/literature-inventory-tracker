@@ -1,6 +1,6 @@
 import { CATALOG, MONTH_GROUPS, SECTIONS, type MonthGroup } from "@/src/lib/reports/template";
 import { pubKey } from "@/src/features/inventory/store";
-import type { InventoryGrid } from "@/src/features/inventory/store";
+import type { GridRow, InventoryGrid } from "@/src/features/inventory/store";
 import type { Quantity } from "@/src/lib/domain/movement";
 import type { LanguageCode } from "@/src/features/inventory/store";
 
@@ -270,14 +270,17 @@ function csvCell(v: Quantity | string): string {
   return /[",]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-/** Export the current workspace grid to the same report-shaped CSV. */
-export function buildExportCsv(grid: InventoryGrid): string {
+/** Export a workspace grid to the same report-shaped CSV. */
+export function buildExportCsv(
+  grid: InventoryGrid,
+  rows: GridRow[],
+): string {
   const groups = ["", "", ...MONTH_GROUPS.flatMap((m) => [m, "", ""])];
   const head = ["Item No.", "Name", "Originally on Hand"];
   for (const m of MONTH_GROUPS) head.push(`${m} Rec'd`, `${m} Currently on Hand`);
   const lines = [groups.join(","), head.join(",")];
-  for (const r of CATALOG) {
-    const key = pubKey(r.section, r.itemNo, r.name);
+  for (const r of rows) {
+    const key = r.key;
     const row: Array<Quantity | string> = [r.itemNo ?? "", r.name, grid.original[key] ?? null];
     for (const m of MONTH_GROUPS) {
       const cell = grid.months[key]?.[m];

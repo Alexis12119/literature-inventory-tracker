@@ -42,7 +42,8 @@ next-env.d.ts
 
 AGENTS.md
 
-supabase/
+# supabase CLI cache (migrations stay versioned)
+supabase/.temp/
 
 # user workbooks (private data)
 *.xlsx

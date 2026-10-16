@@ -154,7 +154,9 @@ describe("workbook import", () => {
     const key = pubKey(first.section, first.itemNo, first.name);
     grid.original[key] = 87;
     grid.months[key]["Sep/Mar"] = { received: 16, onHand: 95 };
-    const exported = buildExportCsv(grid);
+    const exported = buildExportCsv(grid, [
+      { key, itemNo: first.itemNo, name: first.name, code: first.code, section: first.section },
+    ]);
     const mapped = mapSheet(exported.split("\n").map(parseCsvLine));
     expect(mapped.original[key]).toBe(87);
     expect(mapped.onHand[key]?.["Sep/Mar"]).toBe(95);

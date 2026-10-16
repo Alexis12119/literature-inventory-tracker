@@ -78,6 +78,19 @@ body {
   background: #fff;
 }
 
+/* Screen preview behaves like the workspace grid: bounded viewport with a
+   sticky header. Print rules below unclip everything. */
+@media screen {
+  .report-scroll {
+    max-height: 70vh;
+  }
+  .report-grid thead {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+}
+
 @media print {
   @page {
     size: landscape;
@@ -99,6 +112,10 @@ body {
   .app-main {
     padding: 0 !important;
     overflow: visible !important;
+  }
+  .app-main > div {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
   }
   .report-sheet {
     border: 0;

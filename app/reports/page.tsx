@@ -5,13 +5,12 @@ import { FileDown, Plus, Printer } from "lucide-react";
 import { Button, Select, StickyBar } from "@/src/components/ui/controls";
 import { ReportView } from "@/src/components/reports/ReportView";
 import { SummaryReportView } from "@/src/components/reports/SummaryReportView";
-import { blankGrid, type InventoryGrid, type LanguageCode } from "@/src/features/inventory/store";
-import { useCarriedOriginals } from "@/src/features/inventory/carry";
-import { useCatalog } from "@/src/features/catalog/store";
-import { congregationLine, useSettings } from "@/src/features/settings/store";
+import type { InventoryGrid, LanguageCode } from "@/src/features/inventory/store";
 import { MONTH_NAMES, monthsForCycle, orderFromId, useCycles } from "@/src/features/inventory/cycles";
 import { buildSummary } from "@/src/lib/reports/summary";
 import { MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
+import { getInventoryGrid, type GridPayload } from "@/src/features/inventory/actions";
+import { getPublicSettings } from "@/src/features/settings/actions";
 
 export default function ReportsPage() {
   const { cycles, selectedId: cycle, setSelectedId, addServiceYear, canAddMore } = useCycles();
@@ -19,10 +18,10 @@ export default function ReportsPage() {
   const [month, setMonth] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [reportType, setReportType] = useState<"summary" | "tracker">("summary");
-  const [grid, setGrid] = useState<InventoryGrid | null>(null);
-  const carried = useCarriedOriginals(cycle, lang);
-  const catalog = useCatalog();
-  const { settings } = useSettings();
+  const [payload, setPayload] = useState<GridPayload | null>(null);
+  const [congregationName, setCongregationName] = useState("");
+  const [congregationNumber, setCongregationNumber] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const activeCycle = cycles.find((c) => c.id === cycle);
 
@@ -39,8 +38,17 @@ export default function ReportsPage() {
   const monthIndex = active?.groupIndex ?? 5;
 
   // Summary data (resolved even in tracker mode so switching is instant).
-  const summarySections = buildSummary(grid, monthIndex, carried.values, catalog.rows);
-  const congregation = congregationLine(settings);
+  const grid: InventoryGrid | null = payload
+    ? { original: payload.original, months: payload.cells }
+    : null;
+  const carried = payload?.carried ?? { values: {}, sources: {}, sourceLabel: null };
+  const rows = payload?.rows ?? [];
+  const summarySections = buildSummary(grid, monthIndex, carried.values, rows);
+  const congregation = congregationName
+    ? congregationNumber
+      ? `${congregationName} (${congregationNumber})`
+      : congregationName
+    : "";
 
   const selectCycle = (id: string) => {
     setSelectedId(id);
@@ -58,7 +66,7 @@ export default function ReportsPage() {
         const pdf = await generateSummaryPdf({
           grid,
           carried: carried.values,
-          rows: catalog.rows,
+          rows: payload?.rows ?? [],
           lang,
           cycleId: cycle,
           monthIndex,
@@ -99,22 +107,28 @@ export default function ReportsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.resolve().then(() => {
-      if (cancelled) return;
+    (async () => {
       try {
-        const raw = window.localStorage.getItem(`litinv:grid:${cycle}:${lang}`);
-        setGrid(raw ? (JSON.parse(raw) as InventoryGrid) : blankGrid());
-      } catch {
-        setGrid(blankGrid());
+        const [gridPayload, settings] = await Promise.all([
+          getInventoryGrid(cycle, lang),
+          getPublicSettings(),
+        ]);
+        if (cancelled) return;
+        setPayload(gridPayload);
+        setCongregationName(settings.congregationName);
+        setCongregationNumber(settings.congregationNumber);
+        setLoadError(null);
+      } catch (e) {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : "Could not load this report.");
       }
-    });
+    })();
     return () => {
       cancelled = true;
     };
   }, [cycle, lang]);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 py-4">
       <StickyBar className="no-print flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-lg font-bold tracking-tight">Reports</h1>
@@ -140,7 +154,7 @@ export default function ReportsPage() {
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 rounded-lg border border-zinc-200 bg-white p-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-4">
           <div className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
             <span id="report-cycle-label">Cycle</span>
             <div className="flex gap-1" role="group" aria-labelledby="report-cycle-label">
@@ -191,15 +205,16 @@ export default function ReportsPage() {
               />
               All six months
             </label>
-          ) : (
-            <p className="flex items-end pb-2 text-xs text-zinc-500">
-              Current count plus trailing average for {monthLabel}.
-            </p>
-          )}
+          ) : null}
         </div>
       </StickyBar>
 
-      {reportType === "summary" ? (
+      {loadError ? (
+        <div role="alert" className="flex flex-col items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-8 text-center">
+          <p className="text-sm font-semibold">Could not load this report</p>
+          <p className="text-sm text-zinc-500">{loadError}</p>
+        </div>
+      ) : reportType === "summary" ? (
         <SummaryReportView
           lang={lang}
           monthYear={`${monthLabel}, ${yearLabel}`}

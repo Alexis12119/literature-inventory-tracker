@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { CATALOG, MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
-import { calculateMoved, type Quantity } from "@/src/lib/domain/movement";
+import type { Quantity } from "@/src/lib/domain/movement";
 
 export type LanguageCode = "en" | "tl";
 
@@ -92,121 +91,6 @@ export function blankGrid(): InventoryGrid {
     ) as Record<MonthGroup, MonthCell>;
   }
   return { original, months };
-}
-
-function storageKey(cycle: string, lang: LanguageCode): string {
-  return `litinv:grid:${cycle}:${lang}`;
-}
-
-export type SaveStatus = "saved" | "pending" | "failed";
-
-export function useInventoryGrid(
-  cycle: string,
-  lang: LanguageCode,
-  carried: Record<string, Quantity> = {},
-  rows: GridRow[] = DEFAULT_ROWS,
-) {
-  const [grid, setGrid] = useState<InventoryGrid>(blankGrid);
-  const [status, setStatus] = useState<SaveStatus>("saved");
-  const [savedAt, setSavedAt] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    // Deferred hydration from localStorage (client preview cache).
-    // setState inside this async callback is the subscribe-pattern exception.
-    Promise.resolve().then(() => {
-      if (cancelled) return;
-      try {
-        const raw = window.localStorage.getItem(storageKey(cycle, lang));
-        if (raw) {
-          const parsed = JSON.parse(raw) as InventoryGrid;
-          const fresh = blankGrid();
-          setGrid({
-            original: { ...fresh.original, ...parsed.original },
-            months: { ...fresh.months, ...parsed.months },
-          });
-          setSavedAt(window.localStorage.getItem(`${storageKey(cycle, lang)}:at`));
-        } else {
-          setGrid(blankGrid());
-          setSavedAt(null);
-        }
-        setStatus("saved");
-      } catch {
-        setStatus("failed");
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [cycle, lang]);
-
-  const setCell = useCallback(
-    (key: string, month: MonthGroup | "original", field: "received" | "onHand" | "original", value: Quantity) => {
-      setGrid((g) => {
-        const next = { ...g, original: { ...g.original }, months: { ...g.months } };
-        if (month === "original") {
-          next.original[key] = value;
-        } else {
-          next.months[key] = { ...next.months[key], [month]: { ...next.months[key][month], [field]: value } };
-        }
-        return next;
-      });
-      setStatus("pending");
-    },
-    [],
-  );
-
-  const save = useCallback(() => {
-    try {
-      window.localStorage.setItem(storageKey(cycle, lang), JSON.stringify(grid));
-      const at = new Date().toISOString();
-      window.localStorage.setItem(`${storageKey(cycle, lang)}:at`, at);
-      const logRaw = window.localStorage.getItem("litinv:activity");
-      const log = logRaw ? (JSON.parse(logRaw) as Array<Record<string, string>>) : [];
-      log.unshift({
-        at,
-        action: "inventory.save",
-        detail: `Saved ${cycle} / ${lang.toUpperCase()} workspace`,
-      });
-      window.localStorage.setItem("litinv:activity", JSON.stringify(log.slice(0, 100)));
-      setSavedAt(at);
-      setStatus("saved");
-    } catch {
-      setStatus("failed");
-    }
-  }, [cycle, lang, grid]);
-
-  const movedFor = useCallback(
-    (key: string, monthIndex: number): Quantity => {
-      const month = MONTH_GROUPS[monthIndex];
-      const cell = grid.months[key]?.[month];
-      if (!cell) return null;
-      // Explicit original wins; otherwise the carried previous-report closing.
-      const opening =
-        monthIndex === 0
-          ? (grid.original[key] ?? carried[key] ?? null)
-          : (grid.months[key]?.[MONTH_GROUPS[monthIndex - 1]]?.onHand ?? null);
-      return calculateMoved(opening, cell.received, cell.onHand);
-    },
-    [grid, carried],
-  );
-
-  const missingInMonth = useMemo(() => {
-    return (month: MonthGroup): number =>
-      rows.filter((r) => grid.months[r.key]?.[month]?.onHand === null).length;
-  }, [grid, rows]);
-
-  const applyImport = useCallback(
-    (patch: ImportPatch) => {
-      const { counts } = mergeImportPatch(grid, patch);
-      setGrid((g) => mergeImportPatch(g, patch).grid);
-      setStatus("pending");
-      return counts;
-    },
-    [grid],
-  );
-
-  return { grid, setCell, save, status, savedAt, movedFor, missingInMonth, applyImport };
 }
 
 export function parseQtyInput(raw: string): Quantity | "invalid" {

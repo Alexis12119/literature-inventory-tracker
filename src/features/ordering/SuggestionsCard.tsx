@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { ShoppingCart } from "lucide-react";
 import { Badge, Select } from "@/src/components/ui/controls";
 import { MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
-import type { GridRow, InventoryGrid, LanguageCode } from "@/src/features/inventory/store";
+import type { GridRow, InventoryGrid } from "@/src/features/inventory/store";
+import type { Quantity } from "@/src/lib/domain/movement";
 import { isSeptember, orderFromId } from "@/src/features/inventory/cycles";
-import { useCarriedOriginals } from "@/src/features/inventory/carry";
 import {
   CAMPAIGN_CODE,
   DEFAULT_CAMPAIGN_QTY,
@@ -27,22 +27,20 @@ function nextGroup(m: MonthGroup): MonthGroup {
  */
 export function SuggestionsCard({
   cycleId,
-  lang,
   grid,
   rows,
+  carried,
   focusMonth,
 }: {
   cycleId: string;
-  lang: LanguageCode;
   grid: InventoryGrid;
   rows: GridRow[];
+  carried: Record<string, Quantity>;
   focusMonth: MonthGroup;
 }) {
   const [target, setTarget] = useState<MonthGroup>(() => nextGroup(focusMonth));
   const [lead, setLead] = useState(DEFAULT_LEAD_TIME_MONTHS);
   const [campaignQty, setCampaignQty] = useState(DEFAULT_CAMPAIGN_QTY);
-  const [showAll, setShowAll] = useState(false);
-  const carried = useCarriedOriginals(cycleId, lang);
 
   useEffect(() => {
     Promise.resolve().then(() => {
@@ -76,13 +74,12 @@ export function SuggestionsCard({
   const isCampaignMonth =
     order !== null && isSeptember(order, MONTH_GROUPS.indexOf(target));
   const suggestions = useMemo(
-    () => suggestOrders(grid, { leadTimeMonths: lead, isCampaignMonth, campaignQty }, carried.values, rows),
-    [grid, lead, isCampaignMonth, campaignQty, carried.values, rows],
+    () => suggestOrders(grid, { leadTimeMonths: lead, isCampaignMonth, campaignQty }, carried, rows),
+    [grid, lead, isCampaignMonth, campaignQty, carried, rows],
   );
   const actionable = suggestions.filter((s) => s.suggested > 0);
   const covered = suggestions.length - actionable.length;
   const units = actionable.reduce((a, s) => a + s.suggested, 0);
-  const visible = showAll ? suggestions : actionable.slice(0, 10);
 
   return (
     <section className="rounded-lg border border-zinc-200 bg-white p-4" aria-label="Suggested orders">
@@ -147,9 +144,9 @@ export function SuggestionsCard({
             <strong className="tabular-nums">{units}</strong> units total
             {covered > 0 && <span className="text-zinc-500"> · {covered} covered</span>}
           </p>
-          <div className="mt-1 overflow-x-auto">
-            <table className="w-full min-w-lg border-collapse text-sm">
-              <thead>
+          <div className="mt-1 max-h-80 overflow-auto overscroll-contain rounded-md border border-zinc-200" role="region" aria-label="Suggested orders" tabIndex={0}>
+            <table className="w-full min-w-lg border-collapse bg-white text-sm">
+              <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500">
                   <th scope="col" className="py-1.5 pr-2 font-medium">Publication</th>
                   <th scope="col" className="px-2 py-1.5 text-right font-medium">Avg/mo</th>
@@ -159,7 +156,7 @@ export function SuggestionsCard({
                 </tr>
               </thead>
               <tbody>
-                {visible.map((s) => (
+                {suggestions.map((s) => (
                   <tr key={s.key} className="border-b border-zinc-100 last:border-0">
                     <td className="py-1.5 pr-2">
                       <span className="font-medium">{s.name}</span>{" "}
@@ -181,15 +178,6 @@ export function SuggestionsCard({
               </tbody>
             </table>
           </div>
-          {(actionable.length > 10 || covered > 0) && (
-            <button
-              type="button"
-              onClick={() => setShowAll((v) => !v)}
-              className="mt-1 text-xs font-medium text-blue-700 hover:underline"
-            >
-              {showAll ? "Show fewer" : `Show all ${suggestions.length} (${covered} covered)`}
-            </button>
-          )}
         </>
       )}
     </section>
