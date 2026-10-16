@@ -1,8 +1,8 @@
 "use client";
 
 import { Fragment, memo, useMemo } from "react";
-import { CATALOG, MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
-import { pubKey, parseQtyInput } from "@/src/features/inventory/store";
+import { MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
+import { parseQtyInput, type GridRow } from "@/src/features/inventory/store";
 import { labelFromId } from "@/src/features/inventory/carry";
 import { calculateMoved, type Quantity } from "@/src/lib/domain/movement";
 import { cn } from "@/src/lib/utils";
@@ -144,6 +144,7 @@ const InventoryRow = memo(function InventoryRow({
 
 export function InventoryDesktopGrid({
   grid,
+  rows,
   search,
   category,
   setCell,
@@ -151,6 +152,7 @@ export function InventoryDesktopGrid({
   carriedSources = {},
 }: {
   grid: { original: Record<string, Quantity>; months: Record<string, MonthMap> };
+  rows: GridRow[];
   search: string;
   category: string;
   setCell: SetCell;
@@ -159,18 +161,18 @@ export function InventoryDesktopGrid({
 }) {
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return CATALOG.filter(
+    return rows.filter(
       (r) => (category === "all" || r.section === category) && matchesSearch(r, q),
     );
-  }, [search, category]);
+  }, [rows, search, category]);
 
-  const rows: React.ReactNode[] = [];
+  const body: React.ReactNode[] = [];
   let lastSection = "";
   for (const r of visible) {
-    const key = pubKey(r.section, r.itemNo, r.name);
+    const key = r.key;
     if (r.section !== lastSection) {
       lastSection = r.section;
-      rows.push(
+      body.push(
         <tr key={`sec-${r.section}`} className="bg-zinc-50">
           <td className="sticky left-0 z-10 w-[76px] max-w-[76px] min-w-[76px] border-b border-zinc-200 bg-zinc-50" />
           <td className="sticky left-[76px] z-10 w-52 max-w-52 min-w-52 border-b border-r border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-bold">
@@ -183,7 +185,7 @@ export function InventoryDesktopGrid({
         </tr>,
       );
     }
-    rows.push(
+    body.push(
       <InventoryRow
         key={key}
         rowKey={key}
@@ -226,7 +228,7 @@ export function InventoryDesktopGrid({
             ))}
           </tr>
         </thead>
-        <tbody>{rows.length ? rows : (
+        <tbody>{body.length ? body : (
           <tr>
             <td colSpan={21} className="px-4 py-8 text-center text-sm text-zinc-500">No publications match your search.</td>
           </tr>
@@ -285,6 +287,7 @@ const MobileCard = memo(function MobileCard({
 
 export function InventoryMobileCards({
   grid,
+  rows,
   month,
   search,
   category,
@@ -292,6 +295,7 @@ export function InventoryMobileCards({
   carriedValues = {},
 }: {
   grid: { original: Record<string, Quantity>; months: Record<string, MonthMap> };
+  rows: GridRow[];
   month: MonthGroup;
   search: string;
   category: string;
@@ -301,15 +305,15 @@ export function InventoryMobileCards({
   const mi = MONTH_GROUPS.indexOf(month);
   const items = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return CATALOG.filter(
+    return rows.filter(
       (r) => (category === "all" || r.section === category) && matchesSearch(r, q),
     );
-  }, [search, category]);
+  }, [rows, search, category]);
   if (!items.length) return <p className="rounded-lg border border-zinc-200 bg-white px-4 py-8 text-center text-sm text-zinc-500">No publications match your search.</p>;
   return (
     <ul className="flex flex-col gap-2 md:hidden">
       {items.map((r) => {
-        const key = pubKey(r.section, r.itemNo, r.name);
+        const key = r.key;
         const cell = grid.months[key]?.[month] ?? EMPTY_CELL;
         const opening =
           mi === 0

@@ -1,6 +1,15 @@
 import { CATALOG, MONTH_GROUPS } from "@/src/lib/reports/template";
 import { calculateMoved, type Quantity } from "@/src/lib/domain/movement";
 import { pubKey, type InventoryGrid } from "@/src/features/inventory/store";
+import type { GridRow } from "@/src/features/inventory/store";
+
+const TEMPLATE_ROWS: GridRow[] = CATALOG.map((r) => ({
+  key: pubKey(r.section, r.itemNo, r.name),
+  itemNo: r.itemNo,
+  name: r.name,
+  code: r.code,
+  section: r.section,
+}));
 
 export const CAMPAIGN_CODE = "llfi"; // Enjoy Life Forever! brochure
 export const DEFAULT_CAMPAIGN_QTY = 3000;
@@ -47,13 +56,14 @@ export function suggestOrders(
   grid: InventoryGrid,
   opts: SuggestOptions,
   carried: Record<string, Quantity> = {},
+  rows: GridRow[] = TEMPLATE_ROWS,
 ): OrderSuggestion[] {
   const campaignCode = (opts.campaignCode ?? CAMPAIGN_CODE).toLowerCase();
   const campaignQty = opts.campaignQty ?? DEFAULT_CAMPAIGN_QTY;
   const out: OrderSuggestion[] = [];
 
-  for (const r of CATALOG) {
-    const key = pubKey(r.section, r.itemNo, r.name);
+  for (const r of rows) {
+    const key = r.key;
     const trailing: number[] = [];
     let latestOnHand: number | null = null;
 

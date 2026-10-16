@@ -1,6 +1,15 @@
 import { CATALOG, MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
 import { calculateMoved, type Quantity } from "@/src/lib/domain/movement";
 import { pubKey, type InventoryGrid } from "@/src/features/inventory/store";
+import type { GridRow } from "@/src/features/inventory/store";
+
+const TEMPLATE_ROWS: GridRow[] = CATALOG.map((r) => ({
+  key: pubKey(r.section, r.itemNo, r.name),
+  itemNo: r.itemNo,
+  name: r.name,
+  code: r.code,
+  section: r.section,
+}));
 
 /**
  * Dashboard analytics — pure functions over a saved workspace grid.
@@ -57,8 +66,9 @@ export function computeCycleStats(
   grid: InventoryGrid,
   focusMonth: MonthGroup,
   carried: Record<string, Quantity> = {},
+  rows: GridRow[] = TEMPLATE_ROWS,
 ): CycleStats {
-  const total = CATALOG.length;
+  const total = rows.length;
   const months: MonthStat[] = MONTH_GROUPS.map((m) => ({
     month: m,
     counted: 0,
@@ -67,7 +77,7 @@ export function computeCycleStats(
     moved: 0,
   }));
   const catMap = new Map<string, CategoryStat>();
-  for (const r of CATALOG) {
+  for (const r of rows) {
     if (!catMap.has(r.section)) {
       catMap.set(r.section, {
         section: r.section,
@@ -83,8 +93,8 @@ export function computeCycleStats(
   const ranked: RankedPublication[] = [];
   const countedKeys = new Set<string>();
 
-  CATALOG.forEach((r) => {
-    const key = pubKey(r.section, r.itemNo, r.name);
+  rows.forEach((r) => {
+    const key = r.key;
     MONTH_GROUPS.forEach((m, mi) => {
       const cell = grid.months[key]?.[m];
       if (!cell || cell.onHand === null) return;

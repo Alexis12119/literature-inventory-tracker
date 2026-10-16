@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ShoppingCart } from "lucide-react";
 import { Badge, Select } from "@/src/components/ui/controls";
 import { MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
-import type { InventoryGrid, LanguageCode } from "@/src/features/inventory/store";
+import type { GridRow, InventoryGrid, LanguageCode } from "@/src/features/inventory/store";
 import { isSeptember, orderFromId } from "@/src/features/inventory/cycles";
 import { useCarriedOriginals } from "@/src/features/inventory/carry";
 import {
@@ -29,11 +29,13 @@ export function SuggestionsCard({
   cycleId,
   lang,
   grid,
+  rows,
   focusMonth,
 }: {
   cycleId: string;
   lang: LanguageCode;
   grid: InventoryGrid;
+  rows: GridRow[];
   focusMonth: MonthGroup;
 }) {
   const [target, setTarget] = useState<MonthGroup>(() => nextGroup(focusMonth));
@@ -74,8 +76,8 @@ export function SuggestionsCard({
   const isCampaignMonth =
     order !== null && isSeptember(order, MONTH_GROUPS.indexOf(target));
   const suggestions = useMemo(
-    () => suggestOrders(grid, { leadTimeMonths: lead, isCampaignMonth, campaignQty }, carried.values),
-    [grid, lead, isCampaignMonth, campaignQty, carried.values],
+    () => suggestOrders(grid, { leadTimeMonths: lead, isCampaignMonth, campaignQty }, carried.values, rows),
+    [grid, lead, isCampaignMonth, campaignQty, carried.values, rows],
   );
   const actionable = suggestions.filter((s) => s.suggested > 0);
   const covered = suggestions.length - actionable.length;

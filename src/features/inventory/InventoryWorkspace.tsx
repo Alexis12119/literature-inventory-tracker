@@ -3,16 +3,15 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Download, Plus, Printer, Save, Upload } from "lucide-react";
-import { CATALOG, MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
+import { MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
 import { Badge, Button, Input, Select, StickyBar } from "@/src/components/ui/controls";
-import { blankGrid, mergeImportPatch, pubKey, useInventoryGrid, type LanguageCode } from "@/src/features/inventory/store";
+import { blankGrid, mergeImportPatch, useInventoryGrid, type LanguageCode } from "@/src/features/inventory/store";
 import { useCarriedOriginals } from "@/src/features/inventory/carry";
+import { useCatalog } from "@/src/features/catalog/store";
 import { useCycles } from "@/src/features/inventory/cycles";
 import { buildExportCsv } from "@/src/features/import/mapping";
 import { ImportDialog, downloadTextFile, type SheetImportRequest } from "@/src/features/import/Importer";
 import { InventoryDesktopGrid, InventoryMobileCards } from "@/src/features/inventory/grids";
-
-const CATEGORIES = ["all", ...Array.from(new Set(CATALOG.map((r) => r.section)))];
 
 export function InventoryWorkspace() {
   const { cycles, selectedId: cycle, setSelectedId: setCycle, addServiceYear, canAddMore } = useCycles();
@@ -21,18 +20,19 @@ export function InventoryWorkspace() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [importOpen, setImportOpen] = useState(false);
+  const catalog = useCatalog();
+  const categories = useMemo(() => ["all", ...catalog.sections], [catalog.sections]);
   const carried = useCarriedOriginals(cycle, lang);
-  const { grid, setCell, save, status, savedAt, missingInMonth, applyImport } = useInventoryGrid(cycle, lang, carried.values);
+  const { grid, setCell, save, status, savedAt, missingInMonth, applyImport } = useInventoryGrid(cycle, lang, carried.values, catalog.rows);
   const missing = useMemo(() => missingInMonth(month), [missingInMonth, month]);
   const carriedCount = useMemo(
     () =>
       carried.ready
-        ? CATALOG.filter((r) => {
-            const k = pubKey(r.section, r.itemNo, r.name);
-            return (grid.original[k] ?? null) === null && carried.values[k] != null;
+        ? catalog.rows.filter((r) => {
+            return (grid.original[r.key] ?? null) === null && carried.values[r.key] != null;
           }).length
         : 0,
-    [carried, grid],
+    [carried, grid, catalog.rows],
   );
 
   return (
@@ -97,7 +97,7 @@ export function InventoryWorkspace() {
           <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
             Category
             <Select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Category filter">
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <option key={c} value={c}>{c === "all" ? "All categories" : c}</option>
               ))}
             </Select>
@@ -190,10 +190,10 @@ export function InventoryWorkspace() {
 
       {/* Desktop grid */}
       <div className="hidden md:block">
-        <InventoryDesktopGrid grid={grid} search={search} category={category} setCell={setCell} carriedValues={carried.values} carriedSources={carried.sources} />
+        <InventoryDesktopGrid grid={grid} rows={catalog.rows} search={search} category={category} setCell={setCell} carriedValues={carried.values} carriedSources={carried.sources} />
       </div>
       {/* Mobile cards */}
-      <InventoryMobileCards grid={grid} month={month} search={search} category={category} setCell={setCell} carriedValues={carried.values} />
+      <InventoryMobileCards grid={grid} rows={catalog.rows} month={month} search={search} category={category} setCell={setCell} carriedValues={carried.values} />
     </div>
   );
 }

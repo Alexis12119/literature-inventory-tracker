@@ -11,6 +11,23 @@ export interface MonthCell {
   onHand: Quantity;
 }
 
+/** One inventory-bearing row: template entry or local publication. */
+export interface GridRow {
+  key: string;
+  itemNo: string | null;
+  name: string;
+  code: string | null;
+  section: string;
+}
+
+export const DEFAULT_ROWS: GridRow[] = CATALOG.map((r) => ({
+  key: pubKey(r.section, r.itemNo, r.name),
+  itemNo: r.itemNo,
+  name: r.name,
+  code: r.code,
+  section: r.section,
+}));
+
 /** Non-blank imported values only — blanks never overwrite existing data. */
 export interface ImportPatch {
   original: Record<string, Quantity>;
@@ -87,6 +104,7 @@ export function useInventoryGrid(
   cycle: string,
   lang: LanguageCode,
   carried: Record<string, Quantity> = {},
+  rows: GridRow[] = DEFAULT_ROWS,
 ) {
   const [grid, setGrid] = useState<InventoryGrid>(blankGrid);
   const [status, setStatus] = useState<SaveStatus>("saved");
@@ -175,8 +193,8 @@ export function useInventoryGrid(
 
   const missingInMonth = useMemo(() => {
     return (month: MonthGroup): number =>
-      CATALOG.filter((r) => grid.months[pubKey(r.section, r.itemNo, r.name)]?.[month]?.onHand === null).length;
-  }, [grid]);
+      rows.filter((r) => grid.months[r.key]?.[month]?.onHand === null).length;
+  }, [grid, rows]);
 
   const applyImport = useCallback(
     (patch: ImportPatch) => {

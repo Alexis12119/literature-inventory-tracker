@@ -14,6 +14,7 @@ import {
 import { Badge, Button, EmptyState, Select, StickyBar } from "@/src/components/ui/controls";
 import { blankGrid, type InventoryGrid, type LanguageCode } from "@/src/features/inventory/store";
 import { useCarriedOriginals } from "@/src/features/inventory/carry";
+import { useCatalog } from "@/src/features/catalog/store";
 import { useCycles } from "@/src/features/inventory/cycles";
 import { MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
 import { computeCycleStats, isGridEmpty } from "@/src/features/dashboard/analytics";
@@ -33,6 +34,7 @@ export default function DashboardPage() {
   const [grid, setGrid] = useState<InventoryGrid | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const carried = useCarriedOriginals(cycle, lang);
+  const catalog = useCatalog();
 
   useEffect(() => {
     let cancelled = false;
@@ -52,7 +54,7 @@ export default function DashboardPage() {
     };
   }, [cycle, lang]);
 
-  const stats = grid && !isGridEmpty(grid) ? computeCycleStats(grid, focusMonth, carried.values) : null;
+  const stats = grid && !isGridEmpty(grid) ? computeCycleStats(grid, focusMonth, carried.values, catalog.rows) : null;
   const activeCycle = cycles.find((c) => c.id === cycle);
 
   return (
@@ -197,7 +199,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          <SuggestionsCard cycleId={cycle} lang={lang} grid={grid} focusMonth={focusMonth} />
+          <SuggestionsCard cycleId={cycle} lang={lang} grid={grid} rows={catalog.rows} focusMonth={focusMonth} />
 
           <div className="grid gap-3 lg:grid-cols-2">
             {/* Top movers */}

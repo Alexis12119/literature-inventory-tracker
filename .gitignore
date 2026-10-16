@@ -42,5 +42,8 @@ next-env.d.ts
 
 AGENTS.md
 
+supabase/
+
 # user workbooks (private data)
 *.xlsx
+
