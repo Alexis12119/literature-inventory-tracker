@@ -5,8 +5,18 @@
  *   =IF(ISBLANK(H10),"",IF(OR(H10>0,E10>0),MINUS(ADD(E10,G10),H10),IF(ISBLANK(H10),"",0)))
  * Mapping: E = opening (previous stock), G = received, H = current physical count.
  *
- * Behavior (exactly the spreadsheet's):
- * 1. Blank physical count -> blank (null). Only the count gates the result.
+ * Behavior (spreadsheet + owner exception for untouched opening stock):
+ * 1. Blank physical count -> blank (null) in general. Only the count gates
+ *    the result.
+ * 1a. Owner exception: when opening is present (> 0) and BOTH received and
+ *     physical count are blank (untouched), the opening stock is treated as
+ *     fully moved (moved = opening). This covers the first-part case where
+ *     Originally on Hand has a value but Rec'd / Currently on Hand were
+ *     never entered — the stock is assumed distributed, so Moved shows the
+ *     opening quantity instead of blank. Stored inputs stay blank; only the
+ *     Moved display computes. Explicit zeros still behave as zeros, and any
+ *     entered received quantity keeps the blank-count gate (still blank
+ *     until counted).
  * 2. Count entered and (count > 0 OR opening > 0) -> opening + received - count.
  * 3. Both count and opening zero (or blank) -> 0.
  * 4. Negatives preserved (no clamping).
@@ -25,7 +35,12 @@ export function calculateMoved(
   received: Quantity,
   onHand: Quantity,
 ): Quantity {
-  if (onHand === null || onHand === undefined) return null;
+  if (onHand === null || onHand === undefined) {
+    // Owner exception: untouched opening stock reads as fully moved.
+    // Narrow gate — both monthly fields must be blank and opening > 0.
+    if (received === null && opening !== null && opening > 0) return opening;
+    return null;
+  }
   const open = opening ?? 0;
   const recv = received ?? 0;
   if (onHand > 0 || open > 0) {

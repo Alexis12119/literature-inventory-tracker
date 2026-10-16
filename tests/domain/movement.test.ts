@@ -2,10 +2,20 @@ import { describe, expect, it } from "vitest";
 import { calculateMoved, resolveOpening } from "@/src/lib/domain/movement";
 
 describe("calculateMoved", () => {
-  it("returns blank when physical count is blank", () => {
+  it("returns blank when physical count is blank (except untouched opening stock)", () => {
     expect(calculateMoved(10, 3, null)).toBeNull();
     expect(calculateMoved(0, 0, null)).toBeNull();
     expect(calculateMoved(null, 5, null)).toBeNull();
+    // Any entered received quantity keeps the blank gate.
+    expect(calculateMoved(10, 0, null)).toBeNull();
+  });
+
+  it("treats untouched opening stock (blank received + blank count) as fully moved", () => {
+    expect(calculateMoved(10, null, null)).toBe(10);
+    expect(calculateMoved(87, null, null)).toBe(87);
+    // No stock to move stays blank, never invents zero-movement.
+    expect(calculateMoved(0, null, null)).toBeNull();
+    expect(calculateMoved(null, null, null)).toBeNull();
   });
 
   it("returns zero when both opening and count are zero (received ignored per formula)", () => {

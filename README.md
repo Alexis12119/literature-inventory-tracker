@@ -89,7 +89,9 @@ with the backend milestone.
 Faithful to the spreadsheet
 `=IF(ISBLANK(H10),"",IF(OR(H10>0,E10>0),MINUS(ADD(E10,G10),H10),…))`:
 
-1. Blank physical count → blank movement. Only the count gates the result.
+1. Blank physical count → blank movement, except untouched opening stock
+   (opening > 0 with both Rec'd and count blank → moved = opening, i.e.
+   fully moved). Stored inputs stay blank; only Moved computes.
 2. Count entered and (count > 0 or opening > 0) → opening + received − count.
 3. Both zero → zero. Negatives preserved, never clamped.
 4. Blank opening/received act as 0 **inside the arithmetic** once a count is
