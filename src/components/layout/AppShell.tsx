@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Activity,
   BookOpen,
+  ChevronsLeft,
+  ChevronsRight,
   ClipboardList,
   FileText,
   LayoutDashboard,
@@ -16,7 +18,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { SignOutButton } from "@/src/components/auth/SignOutButton";
+import { ConfirmProvider } from "@/src/components/ui/confirm";
 import { SessionProvider, type ShellUser } from "@/src/components/auth/session";
+
+const SIDEBAR_KEY = "litinv:sidebar-collapsed";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -35,7 +40,7 @@ function roleLabel(role: ShellUser["role"]): string {
   return "Account";
 }
 
-function NavLinks({ onNavigate, admin }: { onNavigate?: () => void; admin: boolean }) {
+function NavLinks({ onNavigate, admin, collapsed }: { onNavigate?: () => void; admin: boolean; collapsed?: boolean }) {
   const pathname = usePathname();
   const items = admin ? [...NAV, ...ADMIN_NAV] : NAV;
   return (
@@ -47,16 +52,19 @@ function NavLinks({ onNavigate, admin }: { onNavigate?: () => void; admin: boole
             key={href}
             href={href}
             onClick={onNavigate}
+            title={collapsed ? label : undefined}
+            aria-label={collapsed ? label : undefined}
             aria-current={active ? "page" : undefined}
             className={cn(
               "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium",
+              collapsed && "justify-center px-2",
               active
                 ? "bg-blue-50 text-blue-800"
                 : "text-zinc-700 hover:bg-zinc-100",
             )}
           >
             <Icon size={17} strokeWidth={2} aria-hidden />
-            {label}
+            {!collapsed && label}
           </Link>
         );
       })}
@@ -66,16 +74,40 @@ function NavLinks({ onNavigate, admin }: { onNavigate?: () => void; admin: boole
 
 export function AppShell({ children, user }: { children: ReactNode; user: ShellUser | null }) {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const isAdmin = user?.role === "administrator";
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      try {
+        if (window.localStorage.getItem(SIDEBAR_KEY) === "1") setCollapsed(true);
+      } catch {
+        /* preference only */
+      }
+    });
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed((v) => {
+      try {
+        window.localStorage.setItem(SIDEBAR_KEY, v ? "0" : "1");
+      } catch {
+        /* preference only */
+      }
+      return !v;
+    });
+  };
   // Logged-out visitors only ever see public pages (sign-in, register,
   // pending) — full-width with no sidebar or navigation. Pages center
   // their own cards; the frame stays out of the way.
   if (!user) {
     return (
       <SessionProvider value={null}>
-        <div className="flex min-h-dvh flex-col bg-zinc-100 text-zinc-900">
-          <main className="flex w-full flex-1 items-center px-3 py-6 sm:px-5 md:px-8">{children}</main>
-        </div>
+        <ConfirmProvider>
+          <div className="flex min-h-dvh flex-col bg-zinc-100 text-zinc-900">
+            <main className="flex w-full flex-1 items-center px-3 py-6 sm:px-5 md:px-8">{children}</main>
+          </div>
+        </ConfirmProvider>
       </SessionProvider>
     );
   }
@@ -83,18 +115,45 @@ export function AppShell({ children, user }: { children: ReactNode; user: ShellU
     /* Viewport-locked frame: the page itself never scrolls — only the main
        column does — so no outer area is ever visible past the content. */
     <SessionProvider value={user}>
+    <ConfirmProvider>
     <div className="app-shell flex h-dvh overflow-hidden bg-zinc-100 text-zinc-900">
-      {/* Desktop sidebar: fills the frame height with its own scroll. */}
-      <aside className="no-print hidden h-full w-60 shrink-0 flex-col gap-4 overflow-y-auto border-r border-zinc-200 bg-white p-4 md:flex">
-        <div className="px-1">
-          <p className="text-sm font-bold tracking-tight">Literature Inventory</p>
-          <p className="text-xs text-zinc-500">Monthly Movement tracker</p>
+      {/* Desktop sidebar: collapses to an icon rail; preference persists. */}
+      <aside className={cn("no-print hidden h-full shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden border-r border-zinc-200 bg-white p-3 transition-[width] duration-200 md:flex", collapsed ? "w-16 items-center" : "w-60")}>
+        <div className={cn("flex w-full items-center gap-2", collapsed ? "flex-col" : "px-1")}>
+          {collapsed ? (
+            <span aria-hidden className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-700 text-white">
+              <BookOpen size={17} />
+            </span>
+          ) : (
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold tracking-tight">Literature Inventory</p>
+              <p className="truncate text-xs text-zinc-500">Monthly Movement tracker</p>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 focus-visible:outline-2 focus-visible:outline-blue-700"
+          >
+            {collapsed ? <ChevronsRight size={16} aria-hidden /> : <ChevronsLeft size={16} aria-hidden />}
+          </button>
         </div>
-        <NavLinks admin={isAdmin} />
-        <div className="mt-auto flex flex-col gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600">
-          <p className="font-semibold text-zinc-800">{user.displayName}</p>
-          <p>{roleLabel(user.role)}</p>
-          <SignOutButton compact />
+        <NavLinks admin={isAdmin} collapsed={collapsed} />
+        <div className={cn("mt-auto flex flex-col gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 p-2 text-xs text-zinc-600", collapsed && "items-center border-0 bg-transparent p-0")}>
+          {collapsed ? (
+            <span title={`${user.displayName} · Sign out`}>
+              <SignOutButton compact />
+            </span>
+          ) : (
+            <>
+              <p className="truncate font-semibold text-zinc-800" title={user.displayName}>{user.displayName}</p>
+              <p>{roleLabel(user.role)}</p>
+              <SignOutButton compact />
+            </>
+          )}
         </div>
       </aside>
 
@@ -121,6 +180,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: ShellU
         <main className="app-main min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain px-3 sm:px-5 md:px-8">{children}</main>
       </div>
     </div>
+    </ConfirmProvider>
     </SessionProvider>
   );
 }

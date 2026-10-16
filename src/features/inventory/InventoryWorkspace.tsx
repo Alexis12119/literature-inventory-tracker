@@ -42,6 +42,7 @@ export function InventoryWorkspace() {
   const debouncedSearch = useDebouncedValue(search, 250);
   const [category, setCategory] = useState("all");
   const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [data, setData] = useState<GridPayload | null>(null);
   const [grid, setGrid] = useState<GridState>({ original: {}, cells: {} });
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -159,30 +160,28 @@ export function InventoryWorkspace() {
     [rows, grid, carried],
   );
 
-  const applySheets = useCallback(
-    async (items: SheetImportRequest[]) => {
-      for (const item of items) {
-        if (item.cycleId === cycle && item.lang === lang) {
-          // Current workspace: merge locally for review — autosave persists it.
-          setGrid((g) => {
-            const base = { original: { ...g.original } as Record<string, Quantity>, months: {} as Record<string, Record<MonthGroup, MonthCell>> };
-            for (const r of rows) {
-              base.months[r.key] = { ...(g.cells[r.key] ?? {}) } as Record<MonthGroup, MonthCell>;
-            }
-            const merged = mergeImportPatch(
-              { original: base.original, months: base.months },
-              item.mapped,
-            );
-            const cells: Record<string, Record<MonthGroup, MonthCell>> = {};
-            for (const [k, v] of Object.entries(merged.grid.months)) cells[k] = v;
-            return { original: merged.grid.original, cells };
-          });
-          setRevision((v) => v + 1);
-        } else {
-          await importInventorySheets([
-            { periodKey: item.cycleId, lang: item.lang, patch: item.mapped },
-          ]);
-        }
+  const applySheet = useCallback(
+    async (item: SheetImportRequest) => {
+      if (item.cycleId === cycle && item.lang === lang) {
+        // Current workspace: merge locally for review — autosave persists it.
+        setGrid((g) => {
+          const base = { original: { ...g.original } as Record<string, Quantity>, months: {} as Record<string, Record<MonthGroup, MonthCell>> };
+          for (const r of rows) {
+            base.months[r.key] = { ...(g.cells[r.key] ?? {}) } as Record<MonthGroup, MonthCell>;
+          }
+          const merged = mergeImportPatch(
+            { original: base.original, months: base.months },
+            item.mapped,
+          );
+          const cells: Record<string, Record<MonthGroup, MonthCell>> = {};
+          for (const [k, v] of Object.entries(merged.grid.months)) cells[k] = v;
+          return { original: merged.grid.original, cells };
+        });
+        setRevision((v) => v + 1);
+      } else {
+        await importInventorySheets([
+          { periodKey: item.cycleId, lang: item.lang, patch: item.mapped },
+        ]);
       }
     },
     [cycle, lang, rows],
@@ -201,12 +200,30 @@ export function InventoryWorkspace() {
           <span className="ml-auto flex gap-1.5">
             <button
               type="button"
-              onClick={() => downloadTextFile(`inventory-${cycle}-${lang}.csv`, buildExportCsv({ original: grid.original, months: grid.cells }, rows))}
+              disabled={exporting || !data}
+              onClick={async () => {
+                setExporting(true);
+                try {
+                  // Yield so the busy state paints before the synchronous build.
+                  await new Promise((r) => setTimeout(r, 30));
+                  downloadTextFile(
+                    `inventory-${cycle}-${lang}.csv`,
+                    buildExportCsv({ original: grid.original, months: grid.cells }, rows),
+                  );
+                } finally {
+                  setExporting(false);
+                }
+              }}
               title="Download this workspace as CSV"
               aria-label="Export workspace as CSV"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 text-xs font-medium hover:bg-zinc-50"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 text-xs font-medium hover:bg-zinc-50 disabled:opacity-60"
             >
-              <Download size={14} aria-hidden /> Export
+              {exporting ? (
+                <span aria-hidden className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-300 border-t-blue-700" />
+              ) : (
+                <Download size={14} aria-hidden />
+              )}
+              {exporting ? "Preparing…" : "Export"}
             </button>
             <button
               type="button"
@@ -299,7 +316,7 @@ export function InventoryWorkspace() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         cycles={cycles}
-        onApplyAll={(items) => void applySheets(items)}
+        onApplySheet={(item) => applySheet(item)}
       />
 
       {loadError ? (

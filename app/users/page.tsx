@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { requireAdmin, displayNameOf, type AppRole } from "@/src/lib/auth/gates";
 import { createServiceClient } from "@/src/lib/supabase/service";
 import { setAccountActive, setAccountRole } from "@/src/features/users/actions";
+import { ConfirmAction } from "@/src/components/ui/confirm";
 import { Badge, EmptyState } from "@/src/components/ui/controls";
 
 interface Row {
@@ -73,27 +74,37 @@ export default async function UsersPage() {
                     <Badge tone={r.active ? "success" : "warning"}>{r.active ? "Active" : "Pending"}</Badge>
                   </td>
                   <td className="px-3 py-1.5">
-                    <form action={setAccountRole.bind(null, r.id, r.role === "administrator" ? "literature_servant" : "administrator")}>
-                      <button
-                        type="submit"
-                        disabled={r.id === admin.id}
-                        title={r.id === admin.id ? "You cannot change your own role" : `Switch to ${r.role === "administrator" ? "literature servant" : "administrator"}`}
-                        className="rounded-md border border-zinc-300 px-2 py-1 text-xs font-medium hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {r.role === "administrator" ? "Administrator" : "Servant"}
-                      </button>
-                    </form>
+                    <ConfirmAction
+                      run={setAccountRole.bind(null, r.id, r.role === "administrator" ? "literature_servant" : "administrator")}
+                      title={`Make ${r.displayName} ${r.role === "administrator" ? "a servant" : "an administrator"}?`}
+                      message={
+                        r.role === "administrator"
+                          ? "They will lose access to user approval and catalog management."
+                          : "They will gain access to user approval and catalog management."
+                      }
+                      confirmLabel="Change role"
+                      disabled={r.id === admin.id}
+                      label={r.id === admin.id ? "You cannot change your own role" : `Switch ${r.displayName} to ${r.role === "administrator" ? "literature servant" : "administrator"}`}
+                    >
+                      {r.role === "administrator" ? "Administrator" : "Servant"}
+                    </ConfirmAction>
                   </td>
                   <td className="px-3 py-1.5 text-right">
-                    <form action={setAccountActive.bind(null, r.id, !r.active)}>
-                      <button
-                        type="submit"
-                        disabled={r.id === admin.id}
-                        className="rounded-md border border-zinc-300 px-2 py-1 text-xs font-medium hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {r.active ? "Suspend" : "Approve"}
-                      </button>
-                    </form>
+                    <ConfirmAction
+                      run={setAccountActive.bind(null, r.id, !r.active)}
+                      title={r.active ? `Suspend ${r.displayName}?` : `Approve ${r.displayName}?`}
+                      message={
+                        r.active
+                          ? "They will be signed out and blocked until re-approved."
+                          : "They will be able to sign in and use the inventory."
+                      }
+                      confirmLabel={r.active ? "Suspend" : "Approve"}
+                      danger={r.active}
+                      disabled={r.id === admin.id}
+                      label={r.active ? `Suspend ${r.displayName}` : `Approve ${r.displayName}`}
+                    >
+                      {r.active ? "Suspend" : "Approve"}
+                    </ConfirmAction>
                   </td>
                 </tr>
               ))}

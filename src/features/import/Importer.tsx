@@ -54,17 +54,23 @@ export function ImportDialog({
   open,
   onClose,
   cycles,
-  onApplyAll,
+  onApplySheet,
 }: {
   open: boolean;
   onClose: () => void;
   cycles: Cycle[];
-  onApplyAll: (items: SheetImportRequest[]) => void;
+  onApplySheet: (item: SheetImportRequest) => Promise<void>;
 }) {
   const [sheets, setSheets] = useState<SheetRow[] | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [progress, setProgress] = useState<{
+    done: number;
+    total: number;
+    current: string | null;
+    failed: string[];
+  } | null>(null);
 
   if (!open) return null;
 
@@ -72,6 +78,7 @@ export function ImportDialog({
     setSheets(null);
     setFileName(null);
     setError(null);
+    setProgress(null);
   };
 
   const cycleLabel = (id: string) => cycles.find((c) => c.id === id)?.label ?? id;
@@ -122,16 +129,25 @@ export function ImportDialog({
       .filter((key, _, all) => all.filter((k) => k === key).length > 1),
   );
 
-  const apply = () => {
-    onApplyAll(
-      checked.map((s) => {
-        const t = resolved(s)!;
-        return { sheetName: s.sheetName, cycleId: t.cycleId, lang: t.lang, mapped: s.mapped };
-      }),
-    );
-    reset();
-    onClose();
+  const apply = async () => {
+    const items = checked.map((s) => {
+      const t = resolved(s)!;
+      return { sheetName: s.sheetName, cycleId: t.cycleId, lang: t.lang, mapped: s.mapped };
+    });
+    setProgress({ done: 0, total: items.length, current: null, failed: [] });
+    const failed: string[] = [];
+    for (const [i, item] of items.entries()) {
+      setProgress({ done: i, total: items.length, current: item.sheetName, failed: [...failed] });
+      try {
+        await onApplySheet(item);
+      } catch {
+        failed.push(item.sheetName);
+      }
+    }
+    setProgress({ done: items.length, total: items.length, current: null, failed });
   };
+  const applying = progress !== null && progress.done < progress.total;
+  const applyDone = progress !== null && progress.done >= progress.total;
 
   return (
     <div
@@ -294,17 +310,52 @@ export function ImportDialog({
           <Button
             type="button"
             variant="secondary"
+            disabled={applying}
             onClick={() => {
               reset();
               onClose();
             }}
           >
-            Cancel
+            {applyDone ? "Close" : "Cancel"}
           </Button>
-          <Button type="button" disabled={checked.length === 0} onClick={apply}>
-            Apply {checked.length > 0 ? `(${checked.length} sheets)` : ""}
-          </Button>
+          {!applyDone && (
+            <Button type="button" disabled={checked.length === 0 || applying} onClick={() => void apply()}>
+              {applying ? "Applying…" : `Apply ${checked.length > 0 ? `(${checked.length} sheets)` : ""}`}
+            </Button>
+          )}
         </div>
+        {progress && (
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3" role="status" aria-live="polite">
+            <div className="flex items-baseline justify-between gap-2 text-sm">
+              <p className="font-medium">
+                {applyDone
+                  ? progress.failed.length === 0
+                    ? `Imported ${progress.total} of ${progress.total} sheets`
+                    : `Imported ${progress.total - progress.failed.length} of ${progress.total} sheets`
+                  : `Saving ${progress.current}…`}
+              </p>
+              <p className="text-xs text-zinc-500 tabular-nums">
+                {progress.done}/{progress.total}
+              </p>
+            </div>
+            <div
+              className="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-200"
+              role="progressbar"
+              aria-valuenow={Math.round((progress.done / Math.max(progress.total, 1)) * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Import progress"
+            >
+              <div
+                className="h-full rounded-full bg-blue-700 transition-[width]"
+                style={{ width: `${(progress.done / Math.max(progress.total, 1)) * 100}%` }}
+              />
+            </div>
+            {progress.failed.length > 0 && (
+              <p className="mt-1 text-xs text-red-700">Failed: {progress.failed.join(", ")}</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

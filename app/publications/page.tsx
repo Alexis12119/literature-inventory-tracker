@@ -5,6 +5,7 @@ import { Pencil, Plus, Tags, X } from "lucide-react";
 import { Badge, Button, EmptyState, Input, Select, StickyBar } from "@/src/components/ui/controls";
 import { useDebouncedValue } from "@/src/lib/use-debounced-value";
 import { useIsAdmin } from "@/src/components/auth/session";
+import { useConfirm } from "@/src/components/ui/confirm";
 import type { LanguageCode } from "@/src/features/inventory/store";
 import type { CatalogRow } from "@/src/lib/data-access/catalog";
 import {
@@ -34,6 +35,7 @@ interface SectionRow {
 
 export default function PublicationsPage() {
   const canManage = useIsAdmin();
+  const confirm = useConfirm();
   const [lang, setLang] = useState<LanguageCode>("tl");
   const [rows, setRows] = useState<CatalogRow[]>([]);
   const [sections, setSections] = useState<string[]>([]);
@@ -133,6 +135,16 @@ export default function PublicationsPage() {
     e.preventDefault();
     const name = form.name.trim();
     if (!name) return;
+    const editing = dialog?.kind === "edit";
+    if (
+      !(await confirm({
+        title: editing ? "Save changes?" : "Add publication?",
+        message: editing ? `Update "${name}" in the catalog?` : `Add "${name}" to the catalog?`,
+        confirmLabel: editing ? "Save changes" : "Add publication",
+      }))
+    ) {
+      return;
+    }
     const input = {
       itemNo: form.itemNo.trim() || null,
       name,
@@ -335,7 +347,18 @@ export default function PublicationsPage() {
                         <button type="button" onClick={() => void runCategory(() => adminSetCategoryActive(lang, s.raw, false))} className="rounded-md border border-zinc-300 px-2 py-1 text-xs font-medium hover:bg-zinc-50">Hide</button>
                         <button
                           type="button"
-                          onClick={() => void runCategory(() => adminDeleteCategory(lang, s.raw))}
+                          onClick={async () => {
+                            if (
+                              await confirm({
+                                title: `Delete "${s.display}"?`,
+                                message: "The category is removed permanently. Only empty categories can be deleted.",
+                                confirmLabel: "Delete",
+                                danger: true,
+                              })
+                            ) {
+                              void runCategory(() => adminDeleteCategory(lang, s.raw));
+                            }
+                          }}
                           title="Only empty categories can be deleted"
                           className="rounded-md border border-red-300 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
                         >

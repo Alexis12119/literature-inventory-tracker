@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, Button, Input } from "@/src/components/ui/controls";
+import { Button, Input } from "@/src/components/ui/controls";
 import { PasswordInput } from "@/src/components/ui/PasswordInput";
 import { createClient } from "@/src/lib/supabase/browser";
 import { useIsAdmin } from "@/src/components/auth/session";
@@ -136,7 +136,6 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-3 py-4">
       <div className="flex items-center gap-2">
         <h1 className="text-lg font-bold tracking-tight">Settings</h1>
-        <Badge tone="neutral">Shared database</Badge>
       </div>
       {isAdmin && <CongregationCard />}
       <ChangePasswordCard />
