@@ -30,7 +30,8 @@ export function SummaryReportView({
         {monthYear} | {lang === "tl" ? "Tagalog" : "English"}
       </p>
 
-      <table className="mt-3 w-full border-collapse text-sm">
+      <div className="summary-scroll mt-3 max-h-[70vh] overflow-auto overscroll-contain" role="region" aria-label="Summary table" tabIndex={0}>
+      <table className="w-full border-collapse bg-white text-sm">
         <thead className="sticky top-0 z-10">
           <tr>
             <th scope="col" className="border border-zinc-400 bg-zinc-100 px-2 py-1.5 text-left text-xs font-bold">
@@ -69,6 +70,7 @@ export function SummaryReportView({
           ))}
         </tbody>
       </table>
+      </div>
     </section>
   );
 }

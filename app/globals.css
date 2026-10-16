@@ -127,6 +127,10 @@ body {
   .report-scroll {
     overflow: visible !important;
   }
+  .summary-scroll {
+    max-height: none !important;
+    overflow: visible !important;
+  }
   /* The inventory grid scrolls internally on screen; print it whole. */
   .inventory-grid {
     max-height: none !important;
