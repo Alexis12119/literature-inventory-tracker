@@ -56,17 +56,32 @@ with the backend milestone.
 - **Reorder suggestions** — trailing-3-month average movement × adjustable
   lead time (default 3 months) minus stock on hand, plus the September
   campaign top-up for `llfi` (default 3000, adjustable).
-- **Reports** (`/reports`) — single-month export (default Feb/Aug, the
-  service-year end) or all six months. Screen preview uses the same 6pt/4pt
-  type as the export. **Download PDF** is a custom portrait generator
-  (title, instructions with bulleted item 5, fitted table, gray Moved columns);
-  browser Print remains as a secondary option.
+- **Reports** (`/reports`) — two separate report types with a switcher:
+  - *Summary (default)* — the Congregation Literature summary: congregation
+    header (name/number from Settings), `Month Year | Language`, and a
+    three-column table (`Item` | `Current Quantity on Hand` |
+    `Average Monthly Movement`). Items follow the live catalog (same rows as
+    the workspace, shown as `(code) name`), so catalog edits stay in sync;
+    current counts come from the selected month, averages from trailing
+    history, blanks stay blank.
+  - *Six-month tracker* — single-month export (default Feb/Aug, the
+    service-year end) or all six months. `Originally on Hand` shows only in
+    the full view. One month control drives the label, year, and column.
+  - Screen previews use the same compact type as the exports. **Download
+    PDF** generates custom portrait PDFs (fitted tables, gray Moved columns);
+    browser Print remains as a secondary option.
 - **Dashboard** (`/`) — completion, missing counts, moved/received KPIs, a
   received-vs-moved trend chart, top movers, movement by category, reorder
   suggestions, and recent activity. Every figure derives from saved entries —
   never placeholders.
-- **Publications** (`/publications`) — searchable catalog with add (dialog),
-  archive/restore, and local additions.
+- **Publications** (`/publications`) — searchable catalog with add/edit
+  dialog, revertible overrides of official entries, archive/restore, local
+  additions, and **category management** (add, rename, hide/restore, delete
+  empty custom categories). Renames keep original storage keys, so saved
+  inventory survives them; the official report keeps the original wording.
+- **Settings** (`/settings`) — congregation name/number used in report
+  headers, plus application info. All catalog and settings edits persist in
+  the browser.
 
 ## Movement calculation (single source: `src/lib/domain/movement.ts`)
 
@@ -84,8 +99,9 @@ Faithful to the spreadsheet
 - `app/` — routes, `loading`/`error`/`not-found`/`unauthorized` states
 - `src/components/` — `ui/` primitives, `layout/` shell, `reports/` report view
 - `src/features/` — `inventory/` (workspace, cycles, carry-forward, import),
-  `ordering/` (suggestions), `dashboard/` (analytics, charts)
-- `src/lib/` — `domain/` (movement), `reports/` (template, PDF),
+  `catalog/` (sections, overrides, local pubs), `ordering/` (suggestions),
+  `dashboard/` (analytics, charts), `settings/` (congregation identity)
+- `src/lib/` — `domain/` (movement), `reports/` (template, summary, PDF),
   `validation/` (Zod)
 - `tests/` — Vitest suites mirroring the above
 
@@ -97,7 +113,8 @@ pnpm test
 
 Covers movement math (blank-vs-zero, coercion, carry-forward), cycle math,
 template wording/order, import mapping (header detection, matching, merge),
-ordering (averages, campaign rule), and PDF generation.
+ordering (averages, campaign rule), catalog (sections, overrides),
+summary resolution, and PDF generation.
 
 ## Deployment
 

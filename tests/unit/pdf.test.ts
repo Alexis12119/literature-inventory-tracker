@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { blankGrid, pubKey } from "@/src/features/inventory/store";
 import { CATALOG } from "@/src/lib/reports/template";
 import { generateReportPdf } from "@/src/lib/reports/pdf";
+import { generateSummaryPdf } from "@/src/lib/reports/summary-pdf";
 
 function populated() {
   const grid = blankGrid();
@@ -42,5 +43,32 @@ describe("custom PDF export", () => {
     });
     expect(full.filename).toContain("all");
     expect(full.pages).toBeGreaterThanOrEqual(single.pages);
+  }, 60000);
+
+  it("generates the portrait summary PDF", async () => {
+    const first = CATALOG[0];
+    const pdf = await generateSummaryPdf({
+      grid: populated(),
+      carried: {},
+      rows: [
+        {
+          key: pubKey(first.section, first.itemNo, first.name),
+          itemNo: first.itemNo,
+          name: first.name,
+          code: first.code,
+          section: first.section,
+        },
+      ],
+      lang: "tl",
+      cycleId: "2026-sep-feb",
+      monthIndex: 5,
+      monthLabel: "February",
+      yearLabel: "2027",
+      congregation: "San Francisco - San Pablo City LAG (30890)",
+    });
+    const header = new TextDecoder().decode(new Uint8Array(pdf.bytes.slice(0, 5)));
+    expect(header).toBe("%PDF-");
+    expect(pdf.pages).toBeGreaterThanOrEqual(1);
+    expect(pdf.filename).toContain("literature-summary-tagalog");
   }, 60000);
 });
