@@ -118,10 +118,11 @@ export function Field({
 }
 
 /**
- * Pinned filter/selector toolbar. Sits flush at the viewport top (below the
- * fixed mobile nav) with a solid background and crisp bottom edge, so table
- * content slides underneath with no visible gap. Parent page padding is
- * cancelled with negative margins so the bar spans the full content width.
+ * Pinned filter/selector toolbar. Docks flush to the top of the scrolling
+ * main column (the mobile header lives outside that scroll container, so no
+ * top offset is needed) with a solid background and crisp bottom edge, so
+ * table content slides underneath with no visible gap. Parent page padding
+ * is cancelled with negative margins so the bar spans the full content width.
  */
 export function StickyBar({
   children,
@@ -133,7 +134,7 @@ export function StickyBar({
   return (
     <div
       className={cn(
-        "sticky top-14 z-30 -mx-3 border-b border-zinc-200 bg-zinc-100 px-3 py-3 sm:-mx-5 sm:px-5 md:top-0 md:-mx-8 md:px-8",
+        "sticky top-0 z-30 -mx-3 border-b border-zinc-200 bg-zinc-100 px-3 py-3 sm:-mx-5 sm:px-5 md:-mx-8 md:px-8",
         className,
       )}
     >

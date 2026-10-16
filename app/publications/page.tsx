@@ -94,11 +94,13 @@ export default function PublicationsPage() {
   const visible = useMemo(
     () =>
       rows.filter((r) => {
+        // Checked = archived only; unchecked = active only.
+        if (showArchived ? r.active : !r.active) return false;
         if (section !== "all" && r.section !== section) return false;
         if (q && !`${r.itemNo ?? ""} ${r.name} ${r.code ?? ""}`.toLowerCase().includes(q)) return false;
         return true;
       }),
-    [rows, section, q],
+    [rows, section, q, showArchived],
   );
 
   const counts = useMemo(() => {
@@ -227,10 +229,13 @@ export default function PublicationsPage() {
               ))}
             </Select>
           </label>
-          <label className="flex items-end gap-2 pb-2 text-sm text-zinc-700">
-            <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="h-4 w-4 accent-blue-700" />
-            Show archived
-          </label>
+          <div className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+            Archived
+            <label className="flex h-9 items-center gap-2 text-sm font-normal text-zinc-700">
+              <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="h-4 w-4 accent-blue-700" />
+              Show archived
+            </label>
+          </div>
         </div>
       </StickyBar>
 
