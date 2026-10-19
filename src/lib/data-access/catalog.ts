@@ -24,36 +24,45 @@ export interface DbPeriod {
 export async function listPeriods(db: Db): Promise<DbPeriod[]> {
   const { data: periods, error } = await db
     .from("reporting_periods")
-    .select("id, key, label")
+    .select("id, key, label, reporting_months(id, position, pair_label, month)")
     .order("start_month", { ascending: true });
   if (error) throw new Error("Could not load reporting periods.");
-  const { data: months, error: mErr } = await db
-    .from("reporting_months")
-    .select("id, period_id, position, pair_label, month")
-    .order("month", { ascending: true });
-  if (mErr) throw new Error("Could not load reporting months.");
-  const byPeriod = new Map<string, DbMonth[]>();
-  for (const m of months ?? []) {
-    const list = byPeriod.get(m.period_id as string) ?? [];
-    list.push({
-      id: m.id as string,
-      position: m.position as number,
-      pairLabel: m.pair_label as MonthGroup,
-      month: m.month as string,
-    });
-    byPeriod.set(m.period_id as string, list);
-  }
   return (periods ?? []).map((p) => ({
     id: p.id as string,
     key: p.key as string,
     label: p.label as string,
-    months: (byPeriod.get(p.id as string) ?? []).sort((a, b) => a.position - b.position),
+    months: ((p.reporting_months as Array<Record<string, unknown>> | null) ?? [])
+      .map((m) => ({
+        id: m.id as string,
+        position: m.position as number,
+        pairLabel: m.pair_label as MonthGroup,
+        month: m.month as string,
+      }))
+      .sort((a, b) => a.position - b.position),
   }));
 }
 
 export async function getPeriod(db: Db, key: string): Promise<DbPeriod | null> {
-  const periods = await listPeriods(db);
-  return periods.find((p) => p.key === key) ?? null;
+  const { data, error } = await db
+    .from("reporting_periods")
+    .select("id, key, label, reporting_months(id, position, pair_label, month)")
+    .eq("key", key)
+    .maybeSingle();
+  if (error) throw new Error("Could not load reporting period.");
+  if (!data) return null;
+  return {
+    id: data.id as string,
+    key: data.key as string,
+    label: data.label as string,
+    months: ((data.reporting_months as Array<Record<string, unknown>> | null) ?? [])
+      .map((m) => ({
+        id: m.id as string,
+        position: m.position as number,
+        pairLabel: m.pair_label as MonthGroup,
+        month: m.month as string,
+      }))
+      .sort((a, b) => a.position - b.position),
+  };
 }
 
 /** Previous period key for carry-forward (null before Mar 2024). */
@@ -81,17 +90,21 @@ export async function listCatalog(
   lang: string,
   includeInactive = false,
 ): Promise<{ rows: CatalogRow[]; sections: string[] }> {
-  const { data: cats, error: cErr } = await db
-    .from("publication_categories")
-    .select("id, name, sort_order, is_active")
-    .eq("language_code", lang)
-    .order("sort_order", { ascending: true });
+  const [categoriesResult, publicationsResult] = await Promise.all([
+    db
+      .from("publication_categories")
+      .select("id, name, sort_order, is_active")
+      .eq("language_code", lang)
+      .order("sort_order", { ascending: true }),
+    db
+      .from("publications")
+      .select("id, category_id, item_no, name, code, sort_order, is_active")
+      .eq("language_code", lang)
+      .order("sort_order", { ascending: true }),
+  ]);
+  const { data: cats, error: cErr } = categoriesResult;
   if (cErr) throw new Error("Could not load categories.");
-  const { data: pubs, error: pErr } = await db
-    .from("publications")
-    .select("id, category_id, item_no, name, code, sort_order, is_active")
-    .eq("language_code", lang)
-    .order("sort_order", { ascending: true });
+  const { data: pubs, error: pErr } = publicationsResult;
   if (pErr) throw new Error("Could not load publications.");
   const catById = new Map((cats ?? []).map((c) => [c.id as string, c]));
   const rows: CatalogRow[] = [];

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pencil, Plus, Tags, X } from "lucide-react";
+import { Pagination } from "@/src/components/ui/Pagination";
 import { Badge, Button, EmptyState, Input, Select, StickyBar } from "@/src/components/ui/controls";
 import { useDebouncedValue } from "@/src/lib/use-debounced-value";
 import { useIsAdmin } from "@/src/components/auth/session";
@@ -45,6 +46,8 @@ export default function PublicationsPage() {
   const debouncedSearch = useDebouncedValue(search, 250);
   const [section, setSection] = useState("all");
   const [showArchived, setShowArchived] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [form, setForm] = useState(BLANK_FORM);
   const [dialog, setDialog] = useState<null | EditTarget>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -102,6 +105,9 @@ export default function PublicationsPage() {
       }),
     [rows, section, q, showArchived],
   );
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pageRows = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -200,6 +206,7 @@ export default function PublicationsPage() {
                 onClick={() => {
                   setLang(l);
                   setSection("all");
+                  setPage(1);
                 }}
                 className={`h-10 px-4 text-sm font-semibold ${lang === l ? "bg-accent text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
               >
@@ -221,24 +228,24 @@ export default function PublicationsPage() {
         <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:grid-cols-3 sm:p-4">
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Search
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, item, code…" aria-label="Catalog search" />
+            <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Name, item, code…" aria-label="Catalog search" />
           </label>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Category
-            <Select value={section} onChange={(e) => setSection(e.target.value)} aria-label="Category filter">
+            <Select value={section} onChange={(e) => { setSection(e.target.value); setPage(1); }} aria-label="Category filter">
               <option value="all">All categories</option>
               {sections.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </Select>
           </label>
-          <div className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Archived
-            <label className="flex h-9 items-center gap-2 text-sm font-normal text-zinc-700">
-              <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="h-4 w-4 accent-[#315b4b]" />
+            <span className="flex h-10 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 text-sm font-normal text-zinc-700 shadow-sm shadow-zinc-900/[0.02]">
+              <input type="checkbox" checked={showArchived} onChange={(e) => { setShowArchived(e.target.checked); setPage(1); }} className="h-4 w-4 accent-[#315b4b]" />
               Show archived
-            </label>
-          </div>
+            </span>
+          </label>
         </div>
       </StickyBar>
 
@@ -396,18 +403,18 @@ export default function PublicationsPage() {
       ) : visible.length === 0 ? (
         <EmptyState title="No publications found" hint="Adjust the search or category filter." />
       ) : (
-        <div className="max-h-[70vh] overflow-auto overscroll-contain rounded-lg border border-zinc-200 bg-white" role="region" aria-label="Publication catalog" tabIndex={0}>
+        <div className="max-h-[min(50vh,28rem)] overflow-auto overscroll-contain rounded-lg border border-zinc-200 bg-white" role="region" aria-label="Publication catalog" tabIndex={0}>
           <table className="w-full min-w-xl border-separate border-spacing-0 text-sm">
             <thead className="sticky top-0 z-10">
-              <tr className="bg-zinc-900 text-left text-white">
-                <th scope="col" className="border-b border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold">Item No.</th>
-                <th scope="col" className="border-b border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold">Name</th>
-                <th scope="col" className="border-b border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold">Category</th>
-                {canManage && <th scope="col" className="border-b border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold"><span className="sr-only">Actions</span></th>}
+              <tr className="bg-[#314b3d] text-left text-white">
+                <th scope="col" className="border-b border-[#47604f] bg-[#314b3d] px-3 py-2 text-xs font-semibold">Item No.</th>
+                <th scope="col" className="border-b border-[#47604f] bg-[#314b3d] px-3 py-2 text-xs font-semibold">Name</th>
+                <th scope="col" className="border-b border-[#47604f] bg-[#314b3d] px-3 py-2 text-xs font-semibold">Category</th>
+                {canManage && <th scope="col" className="border-b border-[#47604f] bg-[#314b3d] px-3 py-2 text-xs font-semibold"><span className="sr-only">Actions</span></th>}
               </tr>
             </thead>
             <tbody>
-              {visible.map((r) => (
+              {pageRows.map((r) => (
                 <tr key={r.key} className="bg-white">
                   <td className="border-b border-zinc-200 px-3 py-1.5 text-zinc-600">{r.itemNo || "—"}</td>
                   <td className="border-b border-zinc-200 px-3 py-1.5 font-medium">
@@ -453,6 +460,15 @@ export default function PublicationsPage() {
             </tbody>
           </table>
         </div>
+      )}
+      {!loading && !loadError && visible.length > 0 && (
+        <Pagination
+          total={visible.length}
+          page={currentPage}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+        />
       )}
     </div>
   );

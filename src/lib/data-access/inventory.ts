@@ -6,6 +6,7 @@ import type { GridRow } from "@/src/features/inventory/store";
 import {
   getPeriod,
   listCatalog,
+  listPeriods,
   previousPeriodKey,
   resolvePubIds,
   type Db,
@@ -42,51 +43,68 @@ function blankCells(): Record<MonthGroup, GridCell> {
 async function closingCounts(
   db: Db,
   periodKey: string,
+  periods: Awaited<ReturnType<typeof listPeriods>>,
   keyById: Map<string, string>,
 ): Promise<{ values: Record<string, Quantity>; sources: Record<string, string>; sourceLabel: string | null }> {
   const values: Record<string, Quantity> = {};
   const sources: Record<string, string> = {};
-  const pending = new Set(keyById.keys());
+  const idByKey = new Map([...keyById.entries()].map(([key, id]) => [id, key]));
+  const periodByKey = new Map(periods.map((period) => [period.key, period]));
+  const priorPeriods: typeof periods = [];
   let prevKey = previousPeriodKey(periodKey);
-  let sourceLabel: string | null = null;
-  for (let step = 0; step < 12 && prevKey && pending.size > 0; step++) {
-    const prev = await getPeriod(db, prevKey);
+  for (let step = 0; step < 12 && prevKey; step++) {
+    const prev = periodByKey.get(prevKey);
     if (!prev) break;
-    if (!sourceLabel && Object.keys(values).length === 0) sourceLabel = null;
-    const monthIds = prev.months.map((m) => m.id);
-    const { data: recs } = await db
-      .from("inventory_records")
-      .select("publication_id, month_id, on_hand")
-      .in("month_id", monthIds);
-    const posByMonth = new Map(prev.months.map((m) => [m.id, m.position]));
-    const best = new Map<string, { pos: number; v: number }>();
-    for (const r of recs ?? []) {
-      const v = r.on_hand as number | null;
-      if (v === null || v === undefined) continue;
-      const pos = posByMonth.get(r.month_id as string) ?? 0;
-      const cur = best.get(r.publication_id as string);
-      if (!cur || pos > cur.pos) best.set(r.publication_id as string, { pos, v });
-    }
-    const idByKey = new Map([...keyById.entries()].map(([k, id]) => [id, k]));
-    for (const [pubId, { v }] of best) {
-      const key = idByKey.get(pubId);
-      if (key && pending.has(key)) {
-        values[key] = v;
-        sources[key] = prevKey as string;
-        pending.delete(key);
-        if (!sourceLabel) sourceLabel = prev.label;
-      }
-    }
+    priorPeriods.push(prev);
     prevKey = previousPeriodKey(prevKey);
   }
-  return { values, sources, sourceLabel };
+
+  const monthIds = priorPeriods.flatMap((period) => period.months.map((month) => month.id));
+  if (monthIds.length === 0 || keyById.size === 0) return { values, sources, sourceLabel: null };
+
+  const monthById = new Map(
+    priorPeriods.flatMap((period) => period.months.map((month) => [month.id, { period, month }] as const)),
+  );
+  const latestMonthByPub = new Map<string, string>();
+  let newestSource: { month: string; label: string } | null = null;
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data: recs, error } = await db
+      .from("inventory_records")
+      .select("publication_id, month_id, on_hand")
+      .in("month_id", monthIds)
+      .in("publication_id", [...idByKey.keys()])
+      .not("on_hand", "is", null)
+      .order("month_id", { ascending: true })
+      .order("publication_id", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error("Could not load previous inventory counts.");
+    for (const record of recs ?? []) {
+      const pubId = record.publication_id as string;
+      const key = idByKey.get(pubId);
+      const month = monthById.get(record.month_id as string);
+      if (!key || !month) continue;
+      const currentLatest = latestMonthByPub.get(pubId);
+      if (currentLatest && currentLatest >= month.month.month) continue;
+      latestMonthByPub.set(pubId, month.month.month);
+      values[key] = record.on_hand as number;
+      sources[key] = month.period.key;
+      if (!newestSource || newestSource.month < month.month.month) {
+        newestSource = { month: month.month.month, label: month.period.label };
+      }
+    }
+    if ((recs?.length ?? 0) < pageSize) break;
+  }
+
+  return { values, sources, sourceLabel: newestSource?.label ?? null };
 }
 
 /** Full workspace payload, servanted by role-checked actions. */
 export async function getGrid(db: Db, periodKey: string, lang: string): Promise<InventoryGridPayload> {
-  const period = await getPeriod(db, periodKey);
+  const [periods, catalog] = await Promise.all([listPeriods(db), listCatalog(db, lang)]);
+  const period = periods.find((candidate) => candidate.key === periodKey) ?? null;
   if (!period) throw new Error(`Reporting period not found: ${periodKey}.`);
-  const { rows, sections } = await listCatalog(db, lang);
+  const { rows, sections } = catalog;
 
   const original: Record<string, Quantity> = {};
   const cells: Record<string, Record<MonthGroup, GridCell>> = {};
@@ -94,18 +112,19 @@ export async function getGrid(db: Db, periodKey: string, lang: string): Promise<
     cells[r.key] = blankCells();
   }
 
-  const keyById = await resolvePubIds(
-    db,
-    lang,
-    rows.map((r) => r.key),
-  );
+  const keyById = new Map(rows.map((row) => [row.key, row.id]));
   const idByKey = new Map([...keyById.entries()].map(([k, id]) => [id, k]));
 
   const monthIds = period.months.map((m) => m.id);
-  const { data: recs, error } = await db
-    .from("inventory_records")
-    .select("publication_id, month_id, received, on_hand")
-    .in("month_id", monthIds);
+  const [recordsResult, openingsResult, carried] = await Promise.all([
+    db
+      .from("inventory_records")
+      .select("publication_id, month_id, received, on_hand")
+      .in("month_id", monthIds),
+    db.from("cycle_openings").select("publication_id, quantity").eq("period_id", period.id),
+    closingCounts(db, periodKey, periods, keyById),
+  ]);
+  const { data: recs, error } = recordsResult;
   if (error) throw new Error("Could not load inventory records.");
   const posByMonth = new Map(period.months.map((m) => [m.id, m.position] as [string, number]));
   const pairByPos = new Map(period.months.map((m) => [m.position, m.pairLabel as MonthGroup]));
@@ -121,17 +140,14 @@ export async function getGrid(db: Db, periodKey: string, lang: string): Promise<
     };
   }
 
-  const { data: openings } = await db
-    .from("cycle_openings")
-    .select("publication_id, quantity")
-    .eq("period_id", period.id);
+  const { data: openings, error: openingsError } = openingsResult;
+  if (openingsError) throw new Error("Could not load opening balances.");
   for (const o of openings ?? []) {
     const key = idByKey.get(o.publication_id as string);
     if (key && original[key] === undefined) original[key] = (o.quantity as number | null) ?? null;
   }
 
   // Cross-cycle carry: blank originals inherit previous closing counts.
-  const carried = await closingCounts(db, periodKey, keyById);
   const carriedValues: Record<string, Quantity> = {};
   const carriedSources: Record<string, string> = {};
   for (const r of rows) {
@@ -173,7 +189,7 @@ export async function saveGrid(
 ): Promise<{ original: number; received: number; onHand: number }> {
   const period = await getPeriod(db, input.periodKey);
   if (!period) throw new Error(`Reporting period not found: ${input.periodKey}.`);
-  const monthIdByPos = new Map(period.months.map((m) => [m.position, m.id]));
+  const monthIdByPos = new Map<number, string>(period.months.map((m): [number, string] => [m.position, m.id]));
   const keyById = await resolvePubIds(
     db,
     input.lang,

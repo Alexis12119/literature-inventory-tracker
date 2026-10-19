@@ -230,6 +230,19 @@ export function InventoryWorkspace() {
             <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Inventory</h1>
             <p className="mt-0.5 text-sm text-zinc-500">Enter monthly stock and physical counts.</p>
           </div>
+          <div className="flex overflow-hidden rounded-lg border border-zinc-300" role="group" aria-label="Language">
+            {(["en", "tl"] as LanguageCode[]).map((l) => (
+              <button
+                key={l}
+                type="button"
+                aria-pressed={lang === l}
+                onClick={() => void switchContext(cycle, l)}
+                className={`h-10 px-4 text-sm font-semibold ${lang === l ? "bg-accent text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
+              >
+                {l === "en" ? "English" : "Tagalog"}
+              </button>
+            ))}
+          </div>
           {carriedCount > 0 && (
               <span className="inline-flex items-center rounded-full border border-[#cad9cd] bg-[#edf4ee] px-2 py-0.5 text-xs font-medium text-[#315b4b]">
               {carriedCount} carried from {carried.sourceLabel}
@@ -311,7 +324,7 @@ export function InventoryWorkspace() {
           </div>
         )}
         {/* Controls */}
-        <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:grid-cols-2 sm:p-4 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:grid-cols-2 sm:p-4 lg:grid-cols-4">
           <div className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             <span id="cycle-label">Reporting cycle</span>
             <div className="flex gap-1" role="group" aria-labelledby="cycle-label">
@@ -331,22 +344,6 @@ export function InventoryWorkspace() {
               >
                 <Plus size={15} aria-hidden />
               </Button>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-            Language
-            <div className="flex overflow-hidden rounded-lg border border-zinc-300" role="group" aria-label="Language">
-              {(["en", "tl"] as LanguageCode[]).map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  aria-pressed={lang === l}
-                  onClick={() => void switchContext(cycle, l)}
-                  className={`h-10 flex-1 text-sm font-semibold ${lang === l ? "bg-accent text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
-                >
-                  {l === "en" ? "English" : "Tagalog"}
-                </button>
-              ))}
             </div>
           </div>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">

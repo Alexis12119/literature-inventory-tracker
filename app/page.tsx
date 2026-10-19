@@ -18,8 +18,7 @@ import { MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
 import { computeCycleStats, isGridEmpty } from "@/src/features/dashboard/analytics";
 import { CategoryBars, CompletionBar, TrendChart } from "@/src/features/dashboard/Charts";
 import { SuggestionsCard } from "@/src/features/ordering/SuggestionsCard";
-import { getInventoryGrid, type GridPayload } from "@/src/features/inventory/actions";
-import { listRecentActivity } from "@/src/features/settings/actions";
+import { getDashboardWorkspace, type GridPayload } from "@/src/features/inventory/actions";
 
 interface ActivityEntry {
   id: number;
@@ -41,10 +40,7 @@ export default function DashboardPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [grid, log] = await Promise.all([
-          getInventoryGrid(cycle, lang),
-          listRecentActivity(5),
-        ]);
+        const { grid, activity: log } = await getDashboardWorkspace(cycle, lang);
         if (cancelled) return;
         setPayload(grid);
         setActivity(log);
@@ -75,6 +71,19 @@ export default function DashboardPage() {
             <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Dashboard</h1>
             <p className="mt-0.5 text-sm text-zinc-500">A quick view of the selected inventory cycle.</p>
           </div>
+          <div className="flex overflow-hidden rounded-lg border border-zinc-300" role="group" aria-label="Language">
+            {(["en", "tl"] as LanguageCode[]).map((l) => (
+              <button
+                key={l}
+                type="button"
+                aria-pressed={lang === l}
+                onClick={() => setLang(l)}
+                className={`h-10 px-4 text-sm font-semibold ${lang === l ? "bg-accent text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
+              >
+                {l === "en" ? "English" : "Tagalog"}
+              </button>
+            ))}
+          </div>
           <Link
             href="/inventory"
             className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white shadow-sm hover:bg-accent-hover"
@@ -82,7 +91,7 @@ export default function DashboardPage() {
             Continue entry <ArrowRight size={14} aria-hidden />
           </Link>
         </div>
-        <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:grid-cols-3 sm:p-4">
+        <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:grid-cols-2 sm:p-4">
           <div className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             <span id="dash-cycle-label">Reporting cycle</span>
             <div className="flex gap-1" role="group" aria-labelledby="dash-cycle-label">
@@ -109,22 +118,6 @@ export default function DashboardPage() {
               >
                 <Plus size={15} aria-hidden />
               </Button>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-            Language
-            <div className="flex overflow-hidden rounded-lg border border-zinc-300" role="group" aria-label="Language">
-              {(["en", "tl"] as LanguageCode[]).map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  aria-pressed={lang === l}
-                  onClick={() => setLang(l)}
-                  className={`h-10 flex-1 text-sm font-semibold ${lang === l ? "bg-accent text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
-                >
-                  {l === "en" ? "English" : "Tagalog"}
-                </button>
-              ))}
             </div>
           </div>
           <label className="col-span-1 flex flex-col gap-1.5 text-sm font-medium text-zinc-700">

@@ -9,8 +9,7 @@ import type { InventoryGrid, LanguageCode } from "@/src/features/inventory/store
 import { MONTH_NAMES, monthsForCycle, orderFromId, useCycles } from "@/src/features/inventory/cycles";
 import { buildSummary } from "@/src/lib/reports/summary";
 import { MONTH_GROUPS, type MonthGroup } from "@/src/lib/reports/template";
-import { getInventoryGrid, type GridPayload } from "@/src/features/inventory/actions";
-import { getPublicSettings } from "@/src/features/settings/actions";
+import { getReportWorkspace, type GridPayload } from "@/src/features/inventory/actions";
 
 export default function ReportsPage() {
   const { cycles, selectedId: cycle, setSelectedId, addServiceYear, canAddMore } = useCycles();
@@ -109,14 +108,12 @@ export default function ReportsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [gridPayload, settings] = await Promise.all([
-          getInventoryGrid(cycle, lang),
-          getPublicSettings(),
-        ]);
+        const { grid: gridPayload, congregationName: name, congregationNumber: number } =
+          await getReportWorkspace(cycle, lang);
         if (cancelled) return;
         setPayload(gridPayload);
-        setCongregationName(settings.congregationName);
-        setCongregationNumber(settings.congregationNumber);
+        setCongregationName(name);
+        setCongregationNumber(number);
         setLoadError(null);
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : "Could not load this report.");
@@ -157,7 +154,7 @@ export default function ReportsPage() {
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-4 sm:p-4">
+        <div className={`grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:grid-cols-2 sm:p-4 ${reportType === "tracker" ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
           <div className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             <span id="report-cycle-label">Cycle</span>
             <div className="flex gap-1" role="group" aria-labelledby="report-cycle-label">
@@ -179,7 +176,7 @@ export default function ReportsPage() {
           </div>
           <div className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Language
-            <div className="flex overflow-hidden rounded-lg border border-zinc-300" role="group" aria-label="Language">
+            <div className="flex w-full overflow-hidden rounded-lg border border-zinc-300" role="group" aria-label="Language">
               {(["en", "tl"] as LanguageCode[]).map((l) => (
                 <button key={l} type="button" aria-pressed={lang === l} onClick={() => setLang(l)}
                   className={`h-10 flex-1 text-sm font-semibold ${lang === l ? "bg-accent text-white" : "bg-white text-zinc-700"}`}>
@@ -190,7 +187,7 @@ export default function ReportsPage() {
           </div>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Report month
-            <Select value={active?.label ?? ""} onChange={(e) => setMonth(e.target.value)} disabled={showAll && reportType === "tracker"} aria-label="Report month">
+            <Select value={active?.label ?? ""} onChange={(e) => setMonth(e.target.value)} disabled={showAll && reportType === "tracker"} aria-label="Report month" className="w-full">
               {options.map((o) => (
                 <option key={o.label} value={o.label}>
                   {o.label}
@@ -199,14 +196,16 @@ export default function ReportsPage() {
             </Select>
           </label>
           {reportType === "tracker" ? (
-            <label className="flex items-end gap-2 pb-2 text-sm text-zinc-700">
-              <input
-                type="checkbox"
-                checked={showAll}
-                onChange={(e) => setShowAll(e.target.checked)}
-                className="h-4 w-4 accent-[#315b4b]"
-              />
-              All six months
+            <label className="flex w-full items-end">
+              <span className="flex h-10 w-full items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-700 shadow-sm shadow-zinc-900/[0.02]">
+                <input
+                  type="checkbox"
+                  checked={showAll}
+                  onChange={(e) => setShowAll(e.target.checked)}
+                  className="h-4 w-4 accent-[#315b4b]"
+                />
+                All six months
+              </span>
             </label>
           ) : null}
         </div>

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireUser } from "@/src/lib/auth/gates";
 import { createServiceClient } from "@/src/lib/supabase/service";
 import { getGrid, saveGrid, type SaveCell } from "@/src/lib/data-access/inventory";
+import { getSettings, listActivity } from "@/src/lib/data-access/admin";
 import type { Quantity } from "@/src/lib/domain/movement";
 
 const qty = z.union([z.number().int().min(0).max(999999), z.null()]);
@@ -29,6 +30,32 @@ export async function getInventoryGrid(periodKey: string, lang: "en" | "tl"): Pr
   void user;
   const service = createServiceClient();
   return getGrid(service, periodKey, lang);
+}
+
+/** Dashboard reads share one authenticated request and run in parallel server-side. */
+export async function getDashboardWorkspace(periodKey: string, lang: "en" | "tl") {
+  await requireUser();
+  const service = createServiceClient();
+  const [grid, activity] = await Promise.all([
+    getGrid(service, periodKey, lang),
+    listActivity(service, 5),
+  ]);
+  return { grid, activity };
+}
+
+/** Report preview data share one authenticated request and run in parallel server-side. */
+export async function getReportWorkspace(periodKey: string, lang: "en" | "tl") {
+  await requireUser();
+  const service = createServiceClient();
+  const [grid, settings] = await Promise.all([
+    getGrid(service, periodKey, lang),
+    getSettings(service),
+  ]);
+  return {
+    grid,
+    congregationName: settings["congregation_name"] ?? "",
+    congregationNumber: settings["congregation_number"] ?? "",
+  };
 }
 
 export async function saveInventoryGrid(input: {
