@@ -16,7 +16,7 @@ export default function Error({
       <button
         type="button"
         onClick={reset}
-        className="h-9 rounded-md bg-blue-700 px-4 text-sm font-medium text-white hover:bg-blue-800"
+        className="min-h-10 rounded-lg bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover"
       >
         Try again
       </button>

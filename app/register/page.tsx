@@ -60,17 +60,17 @@ export default function RegisterPage() {
         title="Registration received"
         hint="Your account is created. Two short steps remain."
       >
-        <ol className="flex flex-col gap-2 text-sm text-zinc-700">
-          <li className="flex gap-2.5 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-            <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-700 text-xs font-bold text-white">1</span>
+        <ol className="flex flex-col gap-3 text-sm leading-5 text-zinc-700">
+          <li className="flex gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3.5">
+            <span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#315b4b] text-xs font-bold text-white">1</span>
             Confirm your email address via the link just sent to it.
           </li>
-          <li className="flex gap-2.5 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-            <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-700 text-xs font-bold text-white">2</span>
+          <li className="flex gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3.5">
+            <span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#315b4b] text-xs font-bold text-white">2</span>
             An administrator reviews the registration. You can sign in once the account is approved.
           </li>
         </ol>
-        <Link href="/sign-in" className="text-sm font-medium text-blue-700 hover:underline">
+        <Link href="/sign-in" className="text-sm font-semibold text-[#315b4b] hover:underline">
           Go to sign-in
         </Link>
       </AuthLayout>
@@ -85,19 +85,19 @@ export default function RegisterPage() {
       title="Create your account"
       hint="Literature servants register here. Accounts start pending until an administrator approves them."
     >
-      <form onSubmit={submit} className="flex flex-col gap-3">
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             First name *<Input value={form.firstName} onChange={set("firstName")} autoComplete="given-name" required />
           </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Middle name<Input value={form.middleName} onChange={set("middleName")} autoComplete="additional-name" />
           </label>
         </div>
-        <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
           Last name *<Input value={form.lastName} onChange={set("lastName")} autoComplete="family-name" required />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
           Email *<Input type="email" value={form.email} onChange={set("email")} autoComplete="email" required />
         </label>
         <PasswordInput
@@ -119,13 +119,16 @@ export default function RegisterPage() {
             {error}
           </p>
         )}
-        <Button type="submit" disabled={busy}>
+        <Button type="submit" disabled={busy} className="auth-primary w-full">
           {busy ? "Registering…" : "Register"}
         </Button>
       </form>
-      <Link href="/sign-in" className="text-sm font-medium text-blue-700 hover:underline">
-        Already registered? Sign in
-      </Link>
+      <p className="border-t border-zinc-200 pt-4 text-sm text-zinc-600">
+        Already registered?{" "}
+        <Link href="/sign-in" className="font-semibold text-[#315b4b] hover:underline">
+          Sign in
+        </Link>
+      </p>
     </AuthLayout>
   );
 }

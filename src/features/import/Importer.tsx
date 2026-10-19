@@ -227,7 +227,7 @@ export function ImportDialog({
                 return (
                   <li
                     key={s.sheetName}
-                    className={`rounded-lg border p-3 ${s.checked && t ? "border-blue-300 bg-blue-50/40" : "border-zinc-200 bg-white"}`}
+                    className={`rounded-lg border p-3 ${s.checked && t ? "border-[#c8d8cc] bg-[#f0f5f1]" : "border-zinc-200 bg-white"}`}
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <input
@@ -240,7 +240,7 @@ export function ImportDialog({
                           )
                         }
                         aria-label={`Import sheet ${s.sheetName}`}
-                        className="h-4 w-4 accent-blue-700"
+                        className="h-4 w-4 accent-[#315b4b]"
                       />
                       <span className="text-sm font-bold">{s.sheetName}</span>
                       {t ? (
@@ -347,7 +347,7 @@ export function ImportDialog({
               aria-label="Import progress"
             >
               <div
-                className="h-full rounded-full bg-blue-700 transition-[width]"
+                className="h-full rounded-full bg-accent transition-[width]"
                 style={{ width: `${(progress.done / Math.max(progress.total, 1)) * 100}%` }}
               />
             </div>

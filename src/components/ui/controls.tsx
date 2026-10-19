@@ -13,10 +13,10 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex h-9 items-center justify-center gap-2 rounded-md px-3.5 text-sm font-medium transition-colors",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700",
+        "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         "disabled:cursor-not-allowed disabled:opacity-50",
-        variant === "primary" && "bg-blue-700 text-white hover:bg-blue-800",
+        variant === "primary" && "bg-accent text-white hover:bg-accent-hover",
         variant === "secondary" &&
           "border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50",
         variant === "ghost" && "text-zinc-700 hover:bg-zinc-100",
@@ -35,8 +35,8 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        "h-9 w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm text-zinc-900",
-        "placeholder:text-zinc-400 focus:border-blue-700 focus:outline-2 focus:outline-blue-700",
+        "h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 shadow-sm shadow-zinc-900/[0.02]",
+        "placeholder:text-zinc-400 focus:border-accent focus:outline-2 focus:outline-accent",
         props.className,
       )}
     />
@@ -48,8 +48,8 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
     <select
       {...props}
       className={cn(
-        "h-9 rounded-md border border-zinc-300 bg-white px-2 text-sm text-zinc-900",
-        "focus:border-blue-700 focus:outline-2 focus:outline-blue-700",
+        "h-10 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 shadow-sm shadow-zinc-900/[0.02]",
+        "focus:border-accent focus:outline-2 focus:outline-accent",
         props.className,
       )}
     />
@@ -73,7 +73,7 @@ export function Badge({
         tone === "success" && "border-emerald-300 bg-emerald-50 text-emerald-800",
         tone === "warning" && "border-amber-300 bg-amber-50 text-amber-800",
         tone === "danger" && "border-red-300 bg-red-50 text-red-800",
-        tone === "info" && "border-blue-300 bg-blue-50 text-blue-800",
+        tone === "info" && "border-[#cbd9cd] bg-[#edf4ee] text-[#315b4b]",
         className,
       )}
     >
@@ -134,7 +134,7 @@ export function StickyBar({
   return (
     <div
       className={cn(
-        "sticky top-0 z-30 -mx-3 border-b border-zinc-200 bg-zinc-100 px-3 py-3 sm:-mx-5 sm:px-5 md:-mx-8 md:px-8",
+        "sticky top-0 z-30 -mx-3 border-b border-[#e1e7e1]/90 bg-[#f5f7f4]/95 px-3 py-3 backdrop-blur-md sm:-mx-5 sm:px-5 md:-mx-8 md:px-8",
         className,
       )}
     >

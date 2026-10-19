@@ -38,7 +38,7 @@ export function TrendChart({ months }: { months: MonthStat[] }) {
         {months.map((m, i) => {
           const cx = PAD_X + slot * i + slot / 2;
           const bars = [
-            { v: m.received, fill: "#1d4ed8", x: cx - barW - 2 },
+            { v: m.received, fill: "#315b4b", x: cx - barW - 2 },
             { v: m.moved, fill: m.moved < 0 ? "#b45309" : "#047857", x: cx + 2 },
           ];
           return (
@@ -76,7 +76,7 @@ export function TrendChart({ months }: { months: MonthStat[] }) {
       </svg>
       <figcaption className="mt-1 flex flex-wrap gap-4 text-xs text-zinc-600">
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-blue-700" aria-hidden /> Rec&apos;d
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-accent" aria-hidden /> Rec&apos;d
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-700" aria-hidden /> Moved (amber when negative)
@@ -98,7 +98,7 @@ export function CompletionBar({ pct, counted, total }: { pct: number; counted: n
         aria-valuemax={100}
         aria-label={`Inventory completion ${pct} percent`}
       >
-        <div className="h-full rounded-full bg-blue-700" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
       </div>
       <p className="mt-1 text-xs text-zinc-600">
         {pct}% · {counted} of {total} publications counted

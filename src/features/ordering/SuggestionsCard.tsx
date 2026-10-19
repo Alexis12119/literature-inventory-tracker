@@ -130,7 +130,7 @@ export function SuggestionsCard({
               persist(lead, v);
             }}
             aria-label="September campaign target quantity"
-            className="h-9 rounded-md border border-zinc-300 bg-white px-2.5 text-sm tabular-nums focus:border-blue-700 focus:outline-2 focus:outline-blue-700"
+            className="h-10 rounded-lg border border-zinc-300 bg-white px-3 text-sm tabular-nums focus:border-accent focus:outline-2 focus:outline-accent"
           />
         </label>
       </div>

@@ -128,18 +128,21 @@ export default function ReportsPage() {
   }, [cycle, lang]);
 
   return (
-    <div className="flex flex-col gap-3 py-4">
-      <StickyBar className="no-print flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-lg font-bold tracking-tight">Reports</h1>
-          <div className="flex overflow-hidden rounded-md border border-zinc-300" role="group" aria-label="Report type">
+    <div className="page-content flex flex-col gap-4 pb-8">
+      <StickyBar className="no-print flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="mr-auto">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Reports</h1>
+            <p className="mt-0.5 text-sm text-zinc-500">Preview and export inventory reports.</p>
+          </div>
+          <div className="flex overflow-hidden rounded-lg border border-zinc-300" role="group" aria-label="Report type">
             {(["summary", "tracker"] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 aria-pressed={reportType === t}
                 onClick={() => setReportType(t)}
-                className={`h-8 px-3 text-xs font-medium ${reportType === t ? "bg-blue-700 text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
+                className={`min-h-10 px-4 text-sm font-semibold ${reportType === t ? "bg-accent text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
               >
                 {t === "summary" ? "Summary" : "Six-month tracker"}
               </button>
@@ -154,8 +157,8 @@ export default function ReportsPage() {
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-4">
-          <div className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+        <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-4 sm:p-4">
+          <div className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             <span id="report-cycle-label">Cycle</span>
             <div className="flex gap-1" role="group" aria-labelledby="report-cycle-label">
               <Select value={cycle} onChange={(e) => selectCycle(e.target.value)} aria-label="Reporting cycle" className="min-w-0 flex-1">
@@ -174,18 +177,18 @@ export default function ReportsPage() {
               </Button>
             </div>
           </div>
-          <div className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+          <div className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Language
-            <div className="flex overflow-hidden rounded-md border border-zinc-300" role="group" aria-label="Language">
+            <div className="flex overflow-hidden rounded-lg border border-zinc-300" role="group" aria-label="Language">
               {(["en", "tl"] as LanguageCode[]).map((l) => (
                 <button key={l} type="button" aria-pressed={lang === l} onClick={() => setLang(l)}
-                  className={`h-9 flex-1 text-sm font-medium ${lang === l ? "bg-blue-700 text-white" : "bg-white text-zinc-700"}`}>
+                  className={`h-10 flex-1 text-sm font-semibold ${lang === l ? "bg-accent text-white" : "bg-white text-zinc-700"}`}>
                   {l === "en" ? "English" : "Tagalog"}
                 </button>
               ))}
             </div>
           </div>
-          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Report month
             <Select value={active?.label ?? ""} onChange={(e) => setMonth(e.target.value)} disabled={showAll && reportType === "tracker"} aria-label="Report month">
               {options.map((o) => (
@@ -201,7 +204,7 @@ export default function ReportsPage() {
                 type="checkbox"
                 checked={showAll}
                 onChange={(e) => setShowAll(e.target.checked)}
-                className="h-4 w-4 accent-blue-700"
+                className="h-4 w-4 accent-[#315b4b]"
               />
               All six months
             </label>

@@ -41,7 +41,7 @@ function ChangePasswordCard() {
   };
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-4">
+    <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm shadow-zinc-900/[0.02]">
       <h2 className="text-sm font-semibold">Change password</h2>
       <form onSubmit={submit} className="mt-2 flex max-w-sm flex-col gap-2">
         <PasswordInput label="New password (min 8 characters)" value={password} onChange={setPassword} autoComplete="new-password" required />
@@ -88,17 +88,17 @@ function CongregationCard() {
   }, []);
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-4">
+    <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm shadow-zinc-900/[0.02]">
       <h2 className="text-sm font-semibold">Congregation</h2>
       <p className="mt-0.5 text-xs text-zinc-500">
         Printed in report headers, e.g. San Francisco - San Pablo City LAG (30890).
       </p>
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
           Congregation name
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="San Francisco - San Pablo City LAG" aria-label="Congregation name" />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
           Number
           <Input value={number} onChange={(e) => setNumber(e.target.value)} placeholder="30890" aria-label="Congregation number" />
         </label>
@@ -133,13 +133,16 @@ function CongregationCard() {
 export default function SettingsPage() {
   const isAdmin = useIsAdmin();
   return (
-    <div className="flex flex-col gap-3 py-4">
+    <div className="page-content flex flex-col gap-4 pb-8 pt-5">
       <div className="flex items-center gap-2">
-        <h1 className="text-lg font-bold tracking-tight">Settings</h1>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Settings</h1>
+          <p className="mt-1 text-sm text-zinc-500">Manage your account and report details.</p>
+        </div>
       </div>
       {isAdmin && <CongregationCard />}
       <ChangePasswordCard />
-      <section className="rounded-lg border border-zinc-200 bg-white p-4">
+      <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm shadow-zinc-900/[0.02]">
         <h2 className="text-sm font-semibold">Application</h2>
         <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
           <div><dt className="text-zinc-500">Reporting cycles</dt><dd className="font-medium">Continuous from Mar 2024 · + adds a service year</dd></div>

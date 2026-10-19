@@ -1,19 +1,20 @@
 import Link from "next/link";
+import { ShieldAlert } from "lucide-react";
+import { AuthLayout } from "@/src/components/auth/AuthLayout";
 
 export default function Unauthorized() {
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center gap-3 py-16 text-center">
-      <h1 className="text-lg font-bold">Sign-in required</h1>
-      <p className="text-sm text-zinc-500">
-        Server-side accounts arrive with the backend milestone. This frontend
-        preview does not enforce sign-in yet.
-      </p>
-      <Link
-        href="/"
-        className="inline-flex h-9 items-center rounded-md bg-blue-700 px-4 text-sm font-medium text-white hover:bg-blue-800"
-      >
-        Continue to dashboard
+    <AuthLayout
+      title="Administrator access required"
+      hint="This area is for managing registrations and the publication catalog. Your account does not have administrator access."
+    >
+      <div className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm leading-5 text-zinc-700">
+        <ShieldAlert size={19} className="mt-0.5 shrink-0 text-[#587062]" aria-hidden />
+        <p>You can still use the shared inventory, enter monthly counts, and view reports with your literature servant account.</p>
+      </div>
+      <Link href="/" className="auth-primary inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold">
+        Return to inventory
       </Link>
-    </div>
+    </AuthLayout>
   );
 }

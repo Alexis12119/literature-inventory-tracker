@@ -20,19 +20,19 @@ export default function PendingPage() {
           <li
             key={s.label}
             className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm ${
-              s.done ? "border-zinc-200 bg-zinc-50 text-zinc-700" : "border-amber-300 bg-amber-50 text-amber-900"
+              s.done ? "border-zinc-200 bg-white text-zinc-700" : "border-[#d9e5dd] bg-[#f2f7f3] text-[#294b3b]"
             }`}
           >
             <span
               aria-hidden
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                s.done ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"
+                s.done ? "bg-[#557a66] text-white" : "bg-[#315b4b] text-white"
               }`}
             >
               {s.done ? <Check size={13} /> : <Clock size={13} />}
             </span>
             <span className="font-medium">{s.label}</span>
-            {!s.done && <span className="ml-auto text-xs">in progress</span>}
+            {!s.done && <span className="ml-auto rounded-full bg-white px-2 py-1 text-xs font-medium text-[#315b4b]">In progress</span>}
           </li>
         ))}
       </ol>
@@ -43,7 +43,7 @@ export default function PendingPage() {
         <SignOutButton />
         <Link
           href="/"
-          className="inline-flex h-9 items-center rounded-md bg-blue-700 px-4 text-sm font-medium text-white hover:bg-blue-800"
+          className="inline-flex min-h-10 items-center rounded-lg bg-[#315b4b] px-4 text-sm font-semibold text-white hover:bg-[#284c3e]"
         >
           Try again
         </Link>

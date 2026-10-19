@@ -223,12 +223,15 @@ export function InventoryWorkspace() {
   );
 
   return (
-    <div className="flex flex-col gap-3 py-4">
-      <StickyBar className="no-print flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-lg font-bold tracking-tight">Inventory</h1>
+    <div className="page-content flex flex-col gap-4 pb-8">
+      <StickyBar className="no-print flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="mr-auto min-w-[9rem]">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Inventory</h1>
+            <p className="mt-0.5 text-sm text-zinc-500">Enter monthly stock and physical counts.</p>
+          </div>
           {carriedCount > 0 && (
-            <span className="inline-flex items-center rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-800">
+              <span className="inline-flex items-center rounded-full border border-[#cad9cd] bg-[#edf4ee] px-2 py-0.5 text-xs font-medium text-[#315b4b]">
               {carriedCount} carried from {carried.sourceLabel}
             </span>
           )}
@@ -241,17 +244,17 @@ export function InventoryWorkspace() {
               Saved
             </span>
           ) : null}
-          <span className="ml-auto flex gap-1.5">
+          <span className="flex flex-wrap gap-2">
             <button
               type="button"
               disabled={!isDirty || saving || !data}
               onClick={() => void saveNow()}
               title="Save inventory changes"
               aria-label="Save inventory changes"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-700 px-3 text-xs font-medium text-white hover:bg-blue-800 disabled:opacity-60"
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white shadow-sm hover:bg-accent-hover disabled:opacity-60"
             >
               {saving ? (
-                <span aria-hidden className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-300 border-t-white" />
+                <span aria-hidden className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#a9c0ae] border-t-white" />
               ) : (
                 <Save size={14} aria-hidden />
               )}
@@ -275,10 +278,10 @@ export function InventoryWorkspace() {
               }}
               title="Download this workspace as CSV"
               aria-label="Export workspace as CSV"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 text-xs font-medium hover:bg-zinc-50 disabled:opacity-60"
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 text-sm font-semibold shadow-sm hover:bg-zinc-50 disabled:opacity-60"
             >
               {exporting ? (
-                <span aria-hidden className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-300 border-t-blue-700" />
+                <span aria-hidden className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-300 border-t-accent" />
               ) : (
                 <Download size={14} aria-hidden />
               )}
@@ -289,7 +292,7 @@ export function InventoryWorkspace() {
               onClick={() => setImportOpen(true)}
               title="Import previous records from a spreadsheet"
               aria-label="Import previous records"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 text-xs font-medium hover:bg-zinc-50"
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 text-sm font-semibold shadow-sm hover:bg-zinc-50"
             >
               <Upload size={14} aria-hidden /> Import
             </button>
@@ -308,8 +311,8 @@ export function InventoryWorkspace() {
           </div>
         )}
         {/* Controls */}
-        <div className="grid grid-cols-2 gap-x-3 gap-y-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-3 lg:grid-cols-5">
-          <div className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+        <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:grid-cols-2 sm:p-4 lg:grid-cols-5">
+          <div className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             <span id="cycle-label">Reporting cycle</span>
             <div className="flex gap-1" role="group" aria-labelledby="cycle-label">
               <Select value={cycle} onChange={(e) => void switchContext(e.target.value, lang)} aria-label="Reporting cycle" className="min-w-0 flex-1">
@@ -330,27 +333,27 @@ export function InventoryWorkspace() {
               </Button>
             </div>
           </div>
-          <div className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+          <div className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Language
-            <div className="flex overflow-hidden rounded-md border border-zinc-300" role="group" aria-label="Language">
+            <div className="flex overflow-hidden rounded-lg border border-zinc-300" role="group" aria-label="Language">
               {(["en", "tl"] as LanguageCode[]).map((l) => (
                 <button
                   key={l}
                   type="button"
                   aria-pressed={lang === l}
                   onClick={() => void switchContext(cycle, l)}
-                  className={`h-9 flex-1 text-sm font-medium ${lang === l ? "bg-blue-700 text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
+                  className={`h-10 flex-1 text-sm font-semibold ${lang === l ? "bg-accent text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
                 >
                   {l === "en" ? "English" : "Tagalog"}
                 </button>
               ))}
             </div>
           </div>
-          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Search
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, item, code…" aria-label="Publication search" />
           </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Month
             <Select value={month} onChange={(e) => setMonth(e.target.value as MonthGroup)} aria-label="Current month">
               {MONTH_GROUPS.map((m) => (
@@ -358,7 +361,7 @@ export function InventoryWorkspace() {
               ))}
             </Select>
           </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Category
             <Select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Category filter">
               {categories.map((c) => (

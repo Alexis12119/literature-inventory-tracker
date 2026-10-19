@@ -30,8 +30,8 @@ export function SignOutButton({ compact = false }: { compact?: boolean }) {
       }}
       className={
         compact
-          ? "rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
-          : "inline-flex h-9 items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium hover:bg-zinc-50"
+          ? "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-500 hover:bg-white hover:text-zinc-800"
+          : "inline-flex min-h-10 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 text-sm font-semibold hover:bg-zinc-50"
       }
     >
       <LogOut size={14} aria-hidden /> {!compact && "Sign out"}

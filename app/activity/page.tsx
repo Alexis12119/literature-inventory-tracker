@@ -47,8 +47,11 @@ export default function ActivityPage() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-3 py-4">
-      <h1 className="text-lg font-bold tracking-tight">Activity History</h1>
+    <div className="page-content flex flex-col gap-4 pb-8 pt-5">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Activity History</h1>
+        <p className="mt-1 text-sm text-zinc-500">Recent inventory, catalog, and account changes.</p>
+      </div>
       {loading ? (
         <div className="flex flex-col gap-2" aria-busy="true" aria-label="Loading activity">
           <div className="h-12 animate-pulse rounded-lg border border-zinc-200 bg-white" />
@@ -69,8 +72,8 @@ export default function ActivityPage() {
       ) : (
         <ol className="flex flex-col gap-2">
           {entries.map((e) => (
-            <li key={e.id} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm">
-              <p className="font-medium">{e.detail}</p>
+            <li key={e.id} className="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm shadow-sm shadow-zinc-900/[0.02]">
+              <p className="font-medium leading-5">{e.detail}</p>
               <p className="text-xs text-zinc-500">{new Date(e.at).toLocaleString()} · {e.action}</p>
             </li>
           ))}

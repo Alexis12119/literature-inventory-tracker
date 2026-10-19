@@ -1,13 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f4f5;
-  --foreground: #18181b;
+  --background: #f5f7f4;
+  --foreground: #25382f;
+  --accent: #315b4b;
+  --accent-hover: #284c3e;
+  --accent-soft: #e8f0ea;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -16,6 +22,40 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: #dce8de;
+  color: #263f32;
+}
+
+:focus-visible {
+  outline: 3px solid #82a28d;
+  outline-offset: 2px;
+}
+
+.page-content {
+  width: 100%;
+  max-width: 1680px;
+  margin-inline: auto;
+}
+
+.auth-primary {
+  background-color: var(--accent);
+  color: #fff;
+}
+
+.auth-primary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
 }
 
 /* The page itself must never scroll horizontally: the inventory grid owns
@@ -150,5 +190,16 @@ body {
   }
   .report-grid tr {
     break-inside: avoid;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
   }
 }

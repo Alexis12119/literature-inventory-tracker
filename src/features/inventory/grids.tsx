@@ -50,8 +50,8 @@ function QtyInput({
         if (parsed !== "invalid") onCommit(parsed);
       }}
       className={cn(
-        "h-8 w-full min-w-14 rounded border border-zinc-300 bg-white px-1 text-center text-sm tabular-nums focus:border-blue-700 focus:outline-2 focus:outline-blue-700",
-        isFallback && "border-dashed border-blue-400 bg-blue-50/60 text-blue-900",
+        "h-10 w-full min-w-14 rounded-lg border border-zinc-300 bg-white px-1.5 text-center text-sm tabular-nums shadow-sm shadow-zinc-900/[0.02] focus:border-accent focus:outline-2 focus:outline-accent",
+        isFallback && "border-dashed border-[#9ab19f] bg-[#f1f6f2] text-[#315b4b]",
       )}
     />
   );
@@ -88,11 +88,11 @@ const InventoryRow = memo(function InventoryRow({
   setCell: SetCell;
 }) {
   return (
-    <tr className="bg-white">
-      <td className="sticky left-0 z-10 w-[76px] max-w-[76px] min-w-[76px] border-b border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600">
+    <tr className="bg-white transition-colors hover:bg-[#f4f8f4]">
+      <td className="sticky left-0 z-10 w-[76px] max-w-[76px] min-w-[76px] border-b border-zinc-200 bg-white px-2 py-1.5 text-[13px] text-zinc-600">
         {itemNo ?? ""}
       </td>
-      <td className="sticky left-[76px] z-10 w-52 max-w-52 min-w-52 border-b border-r border-zinc-200 bg-white px-2 py-1 text-xs font-medium">
+      <td className="sticky left-[76px] z-10 w-52 max-w-52 min-w-52 border-b border-r border-zinc-200 bg-white px-2 py-1.5 text-[13px] font-medium leading-5">
         {name}
         {code ? <span className="ml-1 text-zinc-400">{code}</span> : null}
       </td>
@@ -173,14 +173,14 @@ export function InventoryDesktopGrid({
     if (r.section !== lastSection) {
       lastSection = r.section;
       body.push(
-        <tr key={`sec-${r.section}`} className="bg-zinc-50">
-          <td className="sticky left-0 z-10 w-[76px] max-w-[76px] min-w-[76px] border-b border-zinc-200 bg-zinc-50" />
-          <td className="sticky left-[76px] z-10 w-52 max-w-52 min-w-52 border-b border-r border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-bold">
+        <tr key={`sec-${r.section}`} className="bg-[#f1f5f1]">
+          <td className="sticky left-0 z-10 w-[76px] max-w-[76px] min-w-[76px] border-b border-zinc-200 bg-[#f1f5f1]" />
+          <td className="sticky left-[76px] z-10 w-52 max-w-52 min-w-52 border-b border-r border-zinc-200 bg-[#f1f5f1] px-2 py-2 text-xs font-bold uppercase tracking-wide text-[#52645a]">
             {r.section}
           </td>
-          <td className="border-b border-zinc-200 bg-zinc-50" />
+          <td className="border-b border-zinc-200 bg-[#f1f5f1]" />
           {MONTH_GROUPS.map((m) => (
-            <td key={m} colSpan={3} className="border-b border-l border-zinc-200 bg-zinc-50" />
+            <td key={m} colSpan={3} className="border-b border-l border-zinc-200 bg-[#f1f5f1]" />
           ))}
         </tr>,
       );
@@ -202,28 +202,28 @@ export function InventoryDesktopGrid({
   }
 
   return (
-    <div className="inventory-grid overscroll-x-contain max-h-[70vh] overflow-auto rounded-lg border border-zinc-200 bg-white" role="region" aria-label="Six-month inventory grid" tabIndex={0}>
+    <div className="inventory-grid overscroll-x-contain max-h-[70vh] overflow-auto rounded-xl border border-zinc-300 bg-white shadow-sm" role="region" aria-label="Six-month inventory grid" tabIndex={0}>
       <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
         <thead className="sticky top-0 z-20">
-          <tr className="bg-zinc-900 text-white">
-            <th scope="col" className="sticky left-0 z-30 w-[76px] max-w-[76px] min-w-[76px] border-b border-zinc-700 bg-zinc-900 px-2 py-2 text-left text-xs font-semibold">Item No.</th>
-            <th scope="col" className="sticky left-[76px] z-30 w-52 max-w-52 min-w-52 border-b border-r border-zinc-700 bg-zinc-900 px-2 py-2 text-left text-xs font-semibold">Name</th>
-            <th scope="col" className="w-[76px] max-w-[76px] min-w-[76px] border-b border-zinc-700 px-2 py-2 text-center text-xs font-semibold">Originally<br />on Hand</th>
+          <tr className="bg-[#314b3d] text-white">
+            <th scope="col" className="sticky left-0 z-30 w-[76px] max-w-[76px] min-w-[76px] border-b border-[#47604f] bg-[#314b3d] px-2 py-3 text-left text-xs font-semibold">Item No.</th>
+            <th scope="col" className="sticky left-[76px] z-30 w-52 max-w-52 min-w-52 border-b border-r border-[#47604f] bg-[#314b3d] px-2 py-3 text-left text-xs font-semibold">Publication</th>
+            <th scope="col" className="w-[76px] max-w-[76px] min-w-[76px] border-b border-[#47604f] px-2 py-3 text-center text-xs font-semibold">Originally<br />on Hand</th>
             {MONTH_GROUPS.map((m) => (
-              <th key={m} scope="col" colSpan={3} className="border-b border-l border-zinc-700 px-2 py-2 text-center text-xs font-semibold">
+              <th key={m} scope="col" colSpan={3} className="border-b border-l border-[#47604f] px-2 py-3 text-center text-xs font-semibold">
                 {m}
               </th>
             ))}
           </tr>
-          <tr className="bg-zinc-100 text-zinc-800">
-            <th className="sticky left-0 z-30 w-[76px] max-w-[76px] min-w-[76px] border-b border-zinc-300 bg-zinc-100" />
-            <th className="sticky left-[76px] z-30 w-52 max-w-52 min-w-52 border-b border-r border-zinc-300 bg-zinc-100" />
-            <th className="w-[76px] max-w-[76px] min-w-[76px] border-b border-zinc-300" />
+          <tr className="bg-[#edf3ee] text-zinc-800">
+            <th className="sticky left-0 z-30 w-[76px] max-w-[76px] min-w-[76px] border-b border-zinc-300 bg-[#edf3ee]" />
+            <th className="sticky left-[76px] z-30 w-52 max-w-52 min-w-52 border-b border-r border-zinc-300 bg-[#edf3ee]" />
+            <th className="w-[76px] max-w-[76px] min-w-[76px] border-b border-zinc-300 bg-[#edf3ee]" />
             {MONTH_GROUPS.map((m) => (
               <Fragment key={m}>
-                <th scope="col" className="w-[72px] max-w-[72px] min-w-[72px] border-b border-l border-zinc-300 px-1 py-1 text-[11px] font-medium">Rec&apos;d</th>
-                <th scope="col" className="w-[72px] max-w-[72px] min-w-[72px] border-b border-zinc-300 px-1 py-1 text-[11px] font-medium">Currently on Hand</th>
-                <th scope="col" className="w-[68px] max-w-[68px] min-w-[68px] border-b border-zinc-300 bg-zinc-200 px-1 py-1 text-[11px] font-medium">Moved</th>
+                <th scope="col" className="w-[72px] max-w-[72px] min-w-[72px] border-b border-l border-zinc-300 px-1 py-2 text-xs font-semibold">Rec&apos;d</th>
+                <th scope="col" className="w-[72px] max-w-[72px] min-w-[72px] border-b border-zinc-300 px-1 py-2 text-xs font-semibold">Currently on Hand</th>
+                <th scope="col" className="w-[68px] max-w-[68px] min-w-[68px] border-b border-zinc-300 bg-[#e1eae2] px-1 py-2 text-xs font-semibold">Moved</th>
               </Fragment>
             ))}
           </tr>
@@ -262,21 +262,21 @@ const MobileCard = memo(function MobileCard({
   setCell: SetCell;
 }) {
   return (
-    <li className="rounded-lg border border-zinc-200 bg-white p-3">
-      <p className="text-sm font-semibold">{name}</p>
-      <p className="text-xs text-zinc-500">{itemNo ? `Item ${itemNo} · ` : ""}{section}{code ? ` · ${code}` : ""}</p>
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+    <li className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm shadow-zinc-900/[0.02]">
+      <p className="text-base font-semibold leading-5">{name}</p>
+      <p className="mt-1 text-sm text-zinc-500">{itemNo ? `Item ${itemNo} · ` : ""}{section}{code ? ` · ${code}` : ""}</p>
+      <div className="mt-4 grid grid-cols-3 gap-2.5">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-zinc-700">
           Rec&apos;d
           <QtyInput value={received} label={`${name} ${month} received`} onCommit={(v) => setCell(rowKey, month, "received", v)} />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-zinc-700">
           On Hand
           <QtyInput value={onHand} label={`${name} ${month} currently on hand`} onCommit={(v) => setCell(rowKey, month, "onHand", v)} />
         </label>
-        <div className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+        <div className="flex flex-col gap-1.5 text-xs font-semibold text-zinc-700">
           Moved
-          <span className="flex h-8 items-center justify-center rounded bg-zinc-200/70 text-sm tabular-nums" aria-live="polite">
+          <span className="flex h-10 items-center justify-center rounded-lg bg-[#edf3ee] text-sm font-semibold tabular-nums text-[#314b3d]" aria-live="polite">
             {moved === null ? "—" : moved}
           </span>
         </div>

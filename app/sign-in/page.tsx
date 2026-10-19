@@ -48,7 +48,7 @@ function SignInForm() {
         </p>
       )}
       <form onSubmit={submit} className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
           Email<Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
         </label>
         <PasswordInput
@@ -63,13 +63,16 @@ function SignInForm() {
             {error}
           </p>
         )}
-        <Button type="submit" disabled={busy}>
+        <Button type="submit" disabled={busy} className="auth-primary w-full">
           {busy ? "Signing in…" : "Sign in"}
         </Button>
       </form>
-      <Link href="/register" className="text-sm font-medium text-blue-700 hover:underline">
-        New here? Register
-      </Link>
+      <p className="border-t border-zinc-200 pt-4 text-sm text-zinc-600">
+        New to the workspace?{" "}
+        <Link href="/register" className="font-semibold text-[#315b4b] hover:underline">
+          Register for access
+        </Link>
+      </p>
     </AuthLayout>
   );
 }

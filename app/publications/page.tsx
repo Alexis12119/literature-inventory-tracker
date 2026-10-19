@@ -184,11 +184,14 @@ export default function PublicationsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-3 py-4">
-      <StickyBar className="flex flex-col gap-2">
+    <div className="page-content flex flex-col gap-4 pb-8">
+      <StickyBar className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-lg font-bold tracking-tight">Publications</h1>
-          <div className="flex overflow-hidden rounded-md border border-zinc-300" role="group" aria-label="Language">
+          <div className="mr-auto">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Publications</h1>
+            <p className="mt-0.5 text-sm text-zinc-500">Browse and maintain the shared literature catalog.</p>
+          </div>
+          <div className="flex overflow-hidden rounded-lg border border-zinc-300" role="group" aria-label="Language">
             {(["en", "tl"] as LanguageCode[]).map((l) => (
               <button
                 key={l}
@@ -198,7 +201,7 @@ export default function PublicationsPage() {
                   setLang(l);
                   setSection("all");
                 }}
-                className={`h-8 px-3 text-xs font-medium ${lang === l ? "bg-blue-700 text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
+                className={`h-10 px-4 text-sm font-semibold ${lang === l ? "bg-accent text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
               >
                 {l === "en" ? "English" : "Tagalog"}
               </button>
@@ -215,12 +218,12 @@ export default function PublicationsPage() {
             </span>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-3">
-          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+        <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:grid-cols-3 sm:p-4">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Search
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, item, code…" aria-label="Catalog search" />
           </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Category
             <Select value={section} onChange={(e) => setSection(e.target.value)} aria-label="Category filter">
               <option value="all">All categories</option>
@@ -232,7 +235,7 @@ export default function PublicationsPage() {
           <div className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
             Archived
             <label className="flex h-9 items-center gap-2 text-sm font-normal text-zinc-700">
-              <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="h-4 w-4 accent-blue-700" />
+              <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="h-4 w-4 accent-[#315b4b]" />
               Show archived
             </label>
           </div>

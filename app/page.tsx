@@ -68,19 +68,22 @@ export default function DashboardPage() {
   const activeCycle = cycles.find((c) => c.id === cycle);
 
   return (
-    <div className="flex flex-col gap-3 py-4">
-      <StickyBar className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-lg font-bold tracking-tight">Dashboard</h1>
+    <div className="page-content flex flex-col gap-4 pb-8">
+      <StickyBar className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="mr-auto">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Dashboard</h1>
+            <p className="mt-0.5 text-sm text-zinc-500">A quick view of the selected inventory cycle.</p>
+          </div>
           <Link
             href="/inventory"
-            className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-700 px-3 text-xs font-medium text-white hover:bg-blue-800"
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white shadow-sm hover:bg-accent-hover"
           >
             Continue entry <ArrowRight size={14} aria-hidden />
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-3">
-          <div className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+        <div className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:grid-cols-3 sm:p-4">
+          <div className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             <span id="dash-cycle-label">Reporting cycle</span>
             <div className="flex gap-1" role="group" aria-labelledby="dash-cycle-label">
               <Select
@@ -108,23 +111,23 @@ export default function DashboardPage() {
               </Button>
             </div>
           </div>
-          <div className="flex flex-col gap-1 text-xs font-medium text-zinc-700">
+          <div className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Language
-            <div className="flex overflow-hidden rounded-md border border-zinc-300" role="group" aria-label="Language">
+            <div className="flex overflow-hidden rounded-lg border border-zinc-300" role="group" aria-label="Language">
               {(["en", "tl"] as LanguageCode[]).map((l) => (
                 <button
                   key={l}
                   type="button"
                   aria-pressed={lang === l}
                   onClick={() => setLang(l)}
-                  className={`h-9 flex-1 text-sm font-medium ${lang === l ? "bg-blue-700 text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
+                  className={`h-10 flex-1 text-sm font-semibold ${lang === l ? "bg-accent text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}
                 >
                   {l === "en" ? "English" : "Tagalog"}
                 </button>
               ))}
             </div>
           </div>
-          <label className="col-span-2 flex flex-col gap-1 text-xs font-medium text-zinc-700 sm:col-span-1">
+          <label className="col-span-1 flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
             Focus month
             <Select value={focusMonth} onChange={(e) => setFocusMonth(e.target.value as MonthGroup)} aria-label="Focus month">
               {MONTH_GROUPS.map((m) => (
@@ -154,7 +157,7 @@ export default function DashboardPage() {
           action={
             <Link
               href="/inventory"
-              className="mt-2 inline-flex h-9 items-center gap-1.5 rounded-md bg-blue-700 px-3.5 text-sm font-medium text-white hover:bg-blue-800"
+              className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover"
             >
               Open inventory entry <ArrowRight size={14} aria-hidden />
             </Link>
@@ -163,8 +166,8 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* KPI cards */}
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            <section className="rounded-lg border border-zinc-200 bg-white p-3" aria-label="Completion">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm" aria-label="Completion">
               <p className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
                 <ClipboardCheck size={14} aria-hidden /> Completion · {focusMonth}
               </p>
@@ -172,7 +175,7 @@ export default function DashboardPage() {
               <CompletionBar pct={stats.completionPct} counted={stats.counted} total={stats.totalPublications} />
               <p className="mt-1 text-xs text-zinc-500">{stats.cycleCounted} touched this cycle</p>
             </section>
-            <section className="rounded-lg border border-zinc-200 bg-white p-3" aria-label="Missing counts">
+            <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm" aria-label="Missing counts">
               <p className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
                 <AlertTriangle size={14} aria-hidden /> Missing counts
               </p>
@@ -181,19 +184,19 @@ export default function DashboardPage() {
                 {stats.missing === 0 ? "All counted — ready for reporting." : `Uncounted in ${focusMonth}.`}
               </p>
               {stats.missing > 0 && (
-                <Link href="/inventory" className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
+                <Link href="/inventory" className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline">
                   Fill them in <ArrowRight size={12} aria-hidden />
                 </Link>
               )}
             </section>
-            <section className="rounded-lg border border-zinc-200 bg-white p-3" aria-label="Moved">
+            <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm" aria-label="Moved">
               <p className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
                 <TrendingUp size={14} aria-hidden /> Moved · {focusMonth}
               </p>
               <p className="mt-1 text-2xl font-bold tabular-nums">{stats.totalMoved}</p>
               <p className="mt-1 text-xs text-zinc-500">Net change across {stats.counted} counted rows</p>
             </section>
-            <section className="rounded-lg border border-zinc-200 bg-white p-3" aria-label="Received">
+            <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm" aria-label="Received">
               <p className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
                 <Package size={14} aria-hidden /> Received · {focusMonth}
               </p>
@@ -203,8 +206,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Performance: trend alongside top movers */}
-          <div className="grid gap-3 lg:grid-cols-3">
-            <section className="rounded-lg border border-zinc-200 bg-white p-4 lg:col-span-2" aria-label="Movement trend">
+          <div className="grid gap-4 lg:grid-cols-3">
+            <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm lg:col-span-2" aria-label="Movement trend">
               <h2 className="text-sm font-semibold">
                 Movement trend · {activeCycle?.label} · {lang === "tl" ? "Tagalog" : "English"}
               </h2>
@@ -215,7 +218,7 @@ export default function DashboardPage() {
             </section>
 
             {/* Top movers */}
-            <section className="rounded-lg border border-zinc-200 bg-white p-4" aria-label="Top movers">
+            <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm" aria-label="Top movers">
               <h2 className="text-sm font-semibold">Top movers · {focusMonth}</h2>
               {stats.topMovers.length === 0 ? (
                 <p className="mt-1 text-sm text-zinc-500">No counted rows in this month yet.</p>
@@ -277,7 +280,7 @@ export default function DashboardPage() {
                 ))}
               </ol>
             )}
-            <Link href="/activity" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
+            <Link href="/activity" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline">
               Full history <ArrowRight size={12} aria-hidden />
             </Link>
           </section>

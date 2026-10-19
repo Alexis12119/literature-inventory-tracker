@@ -56,11 +56,11 @@ function NavLinks({ onNavigate, admin, collapsed }: { onNavigate?: () => void; a
             aria-label={collapsed ? label : undefined}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium",
+              "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
               collapsed && "justify-center px-2",
               active
-                ? "bg-blue-50 text-blue-800"
-                : "text-zinc-700 hover:bg-zinc-100",
+                ? "bg-accent-soft text-zinc-800"
+                : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950",
             )}
           >
             <Icon size={17} strokeWidth={2} aria-hidden />
@@ -104,7 +104,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: ShellU
     return (
       <SessionProvider value={null}>
         <ConfirmProvider>
-          <div className="flex min-h-dvh flex-col bg-zinc-100 text-zinc-900">
+          <div className="flex min-h-dvh flex-col bg-[#f5f7f4] text-zinc-900">
             <main className="flex w-full flex-1 items-center px-3 py-6 sm:px-5 md:px-8">{children}</main>
           </div>
         </ConfirmProvider>
@@ -116,18 +116,21 @@ export function AppShell({ children, user }: { children: ReactNode; user: ShellU
        column does — so no outer area is ever visible past the content. */
     <SessionProvider value={user}>
     <ConfirmProvider>
-    <div className="app-shell flex h-dvh overflow-hidden bg-zinc-100 text-zinc-900">
+    <div className="app-shell flex h-dvh overflow-hidden bg-[#f5f7f4] text-zinc-900">
       {/* Desktop sidebar: collapses to an icon rail; preference persists. */}
-      <aside className={cn("no-print hidden h-full shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden border-r border-zinc-200 bg-white p-3 transition-[width] duration-200 md:flex", collapsed ? "w-16 items-center" : "w-60")}>
-        <div className={cn("flex w-full items-center gap-2", collapsed ? "flex-col" : "px-1")}>
+      <aside className={cn("no-print hidden h-full shrink-0 flex-col gap-6 overflow-y-auto overflow-x-hidden border-r border-zinc-200 bg-white px-3 py-5 transition-[width] duration-200 md:flex", collapsed ? "w-[4.5rem] items-center" : "w-64")}>
+        <div className={cn("flex w-full items-center gap-3", collapsed ? "flex-col" : "px-1")}>
           {collapsed ? (
-            <span aria-hidden className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-700 text-white">
+            <span aria-hidden className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white shadow-sm">
               <BookOpen size={17} />
             </span>
           ) : (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold tracking-tight">Literature Inventory</p>
-              <p className="truncate text-xs text-zinc-500">Monthly Movement tracker</p>
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-white shadow-sm"><BookOpen size={18} /></span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold tracking-tight">Literature Inventory</p>
+                <p className="truncate text-xs text-zinc-500">Monthly movement</p>
+              </div>
             </div>
           )}
           <button
@@ -136,21 +139,26 @@ export function AppShell({ children, user }: { children: ReactNode; user: ShellU
             aria-expanded={!collapsed}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 focus-visible:outline-2 focus-visible:outline-blue-700"
+            className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 focus-visible:outline-2 focus-visible:outline-accent"
           >
             {collapsed ? <ChevronsRight size={16} aria-hidden /> : <ChevronsLeft size={16} aria-hidden />}
           </button>
         </div>
-        <NavLinks admin={isAdmin} collapsed={collapsed} />
-        <div className={cn("mt-auto flex flex-col gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 p-2 text-xs text-zinc-600", collapsed && "items-center border-0 bg-transparent p-0")}>
+        <div className="w-full">
+          {!collapsed && <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[.12em] text-zinc-400">Workspace</p>}
+          <NavLinks admin={isAdmin} collapsed={collapsed} />
+        </div>
+        <div className={cn("mt-auto flex min-h-[4.5rem] flex-row items-center justify-between gap-2 rounded-xl border border-[#dfe5df] bg-[#f7f9f6] p-3 text-xs text-zinc-600", collapsed && "min-h-0 flex-col justify-start border-0 bg-transparent p-0")}>
           {collapsed ? (
             <span title={`${user.displayName} · Sign out`}>
               <SignOutButton compact />
             </span>
           ) : (
             <>
-              <p className="truncate font-semibold text-zinc-800" title={user.displayName}>{user.displayName}</p>
-              <p>{roleLabel(user.role)}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold leading-5 text-zinc-800" title={user.displayName}>{user.displayName}</p>
+                <p className="truncate text-xs leading-4 text-zinc-500">{roleLabel(user.role)}</p>
+              </div>
               <SignOutButton compact />
             </>
           )}
@@ -159,16 +167,18 @@ export function AppShell({ children, user }: { children: ReactNode; user: ShellU
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Mobile top bar (fixed h-14: the sticky filter bar offsets from it) */}
-        <header className="no-print sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-zinc-200 bg-white px-3 md:hidden">
+        <header className="no-print sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-zinc-200 bg-white px-3 shadow-sm shadow-zinc-900/[0.02] md:hidden">
           <button
             type="button"
             aria-label={open ? "Close navigation" : "Open navigation"}
+            aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="rounded-md p-2 text-zinc-700 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-blue-700"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-zinc-700 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-accent"
           >
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <p className="text-sm font-bold">Literature Inventory</p>
+          <BookOpen size={18} className="text-accent" aria-hidden />
+          <p className="text-sm font-bold tracking-tight">Literature Inventory</p>
           <span className="ml-auto">{user ? <SignOutButton compact /> : null}</span>
         </header>
         {open ? (
@@ -177,7 +187,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: ShellU
           </div>
         ) : null}
 
-        <main className="app-main min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain px-3 sm:px-5 md:px-8">{children}</main>
+        <main className="app-main min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain px-3 sm:px-6 md:px-8">{children}</main>
       </div>
     </div>
     </ConfirmProvider>
