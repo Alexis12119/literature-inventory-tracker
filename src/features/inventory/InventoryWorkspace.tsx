@@ -257,7 +257,7 @@ export function InventoryWorkspace() {
               Saved
             </span>
           ) : null}
-          <span className="flex flex-wrap gap-2">
+          <span className="ml-auto flex flex-wrap justify-end gap-2">
             <button
               type="button"
               disabled={!isDirty || saving || !data}

@@ -8,12 +8,14 @@ export function Pagination({
   pageSize,
   onPageChange,
   onPageSizeChange,
+  onPrefetchPage,
 }: {
   total: number;
   page: number;
   pageSize: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+  onPrefetchPage?: (page: number) => void;
 }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -36,6 +38,8 @@ export function Pagination({
         <button
           type="button"
           onClick={() => onPageChange(currentPage - 1)}
+          onMouseEnter={() => { if (currentPage > 1) onPrefetchPage?.(currentPage - 1); }}
+          onFocus={() => { if (currentPage > 1) onPrefetchPage?.(currentPage - 1); }}
           disabled={currentPage <= 1}
           className="min-h-9 rounded-lg border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -45,6 +49,8 @@ export function Pagination({
         <button
           type="button"
           onClick={() => onPageChange(currentPage + 1)}
+          onMouseEnter={() => { if (currentPage < pageCount) onPrefetchPage?.(currentPage + 1); }}
+          onFocus={() => { if (currentPage < pageCount) onPrefetchPage?.(currentPage + 1); }}
           disabled={currentPage >= pageCount}
           className="min-h-9 rounded-lg border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
         >

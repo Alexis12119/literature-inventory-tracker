@@ -1,9 +1,24 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { requireAdmin, type AppRole } from "@/src/lib/auth/gates";
 import { createServiceClient } from "@/src/lib/supabase/service";
 import { logEvent } from "@/src/lib/data-access/admin";
+import { listUserPage } from "@/src/lib/data-access/users";
+
+const userPageSchema = z.object({
+  search: z.string().trim().max(100),
+  status: z.enum(["all", "active", "pending"]),
+  role: z.enum(["all", "administrator", "literature_servant", "—"]),
+  page: z.number().int().min(1).max(100000),
+  pageSize: z.number().int().min(1).max(50),
+});
+
+export async function getUserDirectoryPage(input: unknown) {
+  await requireAdmin();
+  return listUserPage(createServiceClient(), userPageSchema.parse(input));
+}
 
 /** Approve (activate) or suspend a registered account. */
 export async function setAccountActive(userId: string, active: boolean): Promise<void> {

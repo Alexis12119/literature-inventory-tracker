@@ -14,7 +14,7 @@ import {
   setPublicationActive,
   updatePublication,
 } from "@/src/lib/data-access/admin";
-import { listCatalog as readCatalog } from "@/src/lib/data-access/catalog";
+import { listCatalog as readCatalog, listCatalogPage as readCatalogPage } from "@/src/lib/data-access/catalog";
 import type { LanguageCode } from "@/src/features/inventory/store";
 
 const langSchema = z.enum(["en", "tl"]);
@@ -23,6 +23,21 @@ export async function listCatalogPublic(lang: LanguageCode, includeInactive = fa
   const user = await requireUser();
   void user;
   return readCatalog(createServiceClient(), lang, includeInactive);
+}
+
+const catalogPageSchema = z.object({
+  lang: langSchema,
+  search: z.string().trim().max(100),
+  category: z.string().max(60),
+  archived: z.boolean(),
+  page: z.number().int().min(1).max(100000),
+  pageSize: z.number().int().min(1).max(50),
+});
+
+export async function listCatalogPage(input: unknown) {
+  await requireUser();
+  const parsed = catalogPageSchema.parse(input);
+  return readCatalogPage(createServiceClient(), parsed);
 }
 
 const pubSchema = z.object({

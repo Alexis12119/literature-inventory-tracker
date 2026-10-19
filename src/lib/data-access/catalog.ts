@@ -84,6 +84,40 @@ export interface CatalogRow extends GridRow {
   active: boolean;
 }
 
+export interface CatalogPage {
+  rows: CatalogRow[];
+  sections: Array<{ name: string; count: number }>;
+  total: number;
+}
+
+export async function listCatalogPage(
+  db: Db,
+  input: { lang: string; search: string; category: string; archived: boolean; page: number; pageSize: number },
+): Promise<CatalogPage> {
+  const { data, error } = await db.rpc("catalog_page", {
+    p_language: input.lang,
+    p_search: input.search,
+    p_category: input.category,
+    p_archived: input.archived,
+    p_page: input.page,
+    p_page_size: input.pageSize,
+  });
+  if (error) throw new Error("Could not load the catalog.");
+  const result = data as {
+    total: number;
+    sections: Array<{ name: string; count: number }>;
+    rows: Array<{ id: string; itemNo: string | null; name: string; code: string | null; section: string; active: boolean }>;
+  };
+  return {
+    total: Number(result.total ?? 0),
+    sections: result.sections ?? [],
+    rows: (result.rows ?? []).map((row) => ({
+      ...row,
+      key: rowKey(row.section, row.itemNo, row.name),
+    })),
+  };
+}
+
 /** Effective catalog for a language: active categories, renames applied. */
 export async function listCatalog(
   db: Db,

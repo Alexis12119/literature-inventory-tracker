@@ -177,6 +177,34 @@ export async function listActivity(
   }));
 }
 
+export async function listActivityPage(
+  db: Db,
+  input: { search: string; category: string; since: string | null; page: number; pageSize: number },
+): Promise<{ rows: Array<{ id: number; actor: string | null; action: string; detail: string; at: string }>; total: number }> {
+  const { data, error } = await db.rpc("activity_page", {
+    p_search: input.search,
+    p_category: input.category,
+    p_since: input.since,
+    p_page: input.page,
+    p_page_size: input.pageSize,
+  });
+  if (error) throw new Error("Could not load activity.");
+  const result = data as {
+    total: number;
+    rows: Array<{ id: number; actor: string | null; action: string; after: Record<string, unknown> | null; at: string }>;
+  };
+  return {
+    total: Number(result.total ?? 0),
+    rows: (result.rows ?? []).map((event) => ({
+      id: event.id,
+      actor: event.actor,
+      action: event.action,
+      detail: describeEvent(event.action, event.after),
+      at: event.at,
+    })),
+  };
+}
+
 function describeEvent(action: string, after: Record<string, unknown> | null): string {
   if (action === "inventory.save" && after) {
     const total = (after["original"] as number) ?? 0;

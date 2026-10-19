@@ -9,6 +9,7 @@ import { useIsAdmin } from "@/src/components/auth/session";
 import { useConfirm } from "@/src/components/ui/confirm";
 import type { LanguageCode } from "@/src/features/inventory/store";
 import type { CatalogRow } from "@/src/lib/data-access/catalog";
+import { ClientPageCache } from "@/src/lib/client-page-cache";
 import {
   adminCreateCategory,
   adminCreatePublication,
@@ -17,7 +18,7 @@ import {
   adminSetCategoryActive,
   adminSetPublicationActive,
   adminUpdatePublication,
-  listCatalogPublic,
+  listCatalogPage,
 } from "@/src/features/publications/actions";
 
 const BLANK_FORM = { itemNo: "", name: "", code: "", section: "Books" };
@@ -39,7 +40,8 @@ export default function PublicationsPage() {
   const confirm = useConfirm();
   const [lang, setLang] = useState<LanguageCode>("tl");
   const [rows, setRows] = useState<CatalogRow[]>([]);
-  const [sections, setSections] = useState<string[]>([]);
+  const [sections, setSections] = useState<Array<{ name: string; count: number }>>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -48,6 +50,7 @@ export default function PublicationsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [pageCache] = useState(() => new ClientPageCache<Awaited<ReturnType<typeof listCatalogPage>>>());
   const [form, setForm] = useState(BLANK_FORM);
   const [dialog, setDialog] = useState<null | EditTarget>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -57,19 +60,37 @@ export default function PublicationsPage() {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const prefetchPage = useCallback((targetPage: number) => {
+    const input = { lang, search: debouncedSearch.trim(), category: section, archived: showArchived, page: targetPage, pageSize };
+    void pageCache.get(JSON.stringify(input), () => listCatalogPage(input)).catch(() => {});
+  }, [lang, debouncedSearch, section, showArchived, pageSize, pageCache]);
+
+  const refresh = useCallback(async (force = false) => {
+    const input = {
+      lang,
+      search: debouncedSearch.trim(),
+      category: section,
+      archived: showArchived,
+      page,
+      pageSize,
+    };
+    const key = JSON.stringify(input);
+    if (force) pageCache.clear();
+    const cached = pageCache.has(key);
+    if (!cached) setLoading(true);
     setLoadError(null);
     try {
-      const data = await listCatalogPublic(lang, showArchived);
+      const data = await pageCache.get(key, () => listCatalogPage(input));
       setRows(data.rows);
       setSections(data.sections);
+      setTotal(data.total);
+      if (page * pageSize < data.total) prefetchPage(page + 1);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Could not load the catalog.");
     } finally {
       setLoading(false);
     }
-  }, [lang, showArchived]);
+  }, [lang, showArchived, debouncedSearch, section, page, pageSize, pageCache, prefetchPage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,42 +114,20 @@ export default function PublicationsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [dialog, catOpen]);
 
-  const q = debouncedSearch.trim().toLowerCase();
-  const visible = useMemo(
-    () =>
-      rows.filter((r) => {
-        // Checked = archived only; unchecked = active only.
-        if (showArchived ? r.active : !r.active) return false;
-        if (section !== "all" && r.section !== section) return false;
-        if (q && !`${r.itemNo ?? ""} ${r.name} ${r.code ?? ""}`.toLowerCase().includes(q)) return false;
-        return true;
-      }),
-    [rows, section, q, showArchived],
-  );
-  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
-  const currentPage = Math.min(page, pageCount);
-  const pageRows = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const r of rows) c[r.section] = (c[r.section] ?? 0) + 1;
-    return c;
-  }, [rows]);
-
   const sectionRows: SectionRow[] = useMemo(
     () =>
       sections.map((s) => ({
-        raw: s,
-        display: s,
+        raw: s.name,
+        display: s.name,
         isCustom: false,
         hidden: false,
-        count: counts[s] ?? 0,
+        count: s.count,
       })),
-    [sections, counts],
+    [sections],
   );
 
   const openAdd = () => {
-    setForm({ ...BLANK_FORM, section: section === "all" ? sections[0] ?? "Books" : section });
+    setForm({ ...BLANK_FORM, section: section === "all" ? sections[0]?.name ?? "Books" : section });
     setFormError(null);
     setDialog({ kind: "add" });
   };
@@ -173,7 +172,7 @@ export default function PublicationsPage() {
         await adminCreatePublication(lang, input);
       }
       closeDialog();
-      await refresh();
+      await refresh(true);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Could not save.");
     }
@@ -183,7 +182,7 @@ export default function PublicationsPage() {
     setCatError(null);
     try {
       await fn();
-      await refresh();
+      await refresh(true);
     } catch (err) {
       setCatError(err instanceof Error ? err.message : "Could not update categories.");
     }
@@ -235,7 +234,7 @@ export default function PublicationsPage() {
             <Select value={section} onChange={(e) => { setSection(e.target.value); setPage(1); }} aria-label="Category filter">
               <option value="all">All categories</option>
               {sections.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s.name} value={s.name}>{s.name}</option>
               ))}
             </Select>
           </label>
@@ -278,7 +277,7 @@ export default function PublicationsPage() {
               <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">Code<Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></label>
             </div>
             <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">Name *<Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required autoFocus /></label>
-            <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">Category<Select value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })}>{sections.map((s) => (<option key={s} value={s}>{s}</option>))}</Select></label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-zinc-700">Category<Select value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })}>{sections.map((s) => (<option key={s.name} value={s.name}>{s.name}</option>))}</Select></label>
             {formError && (
               <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{formError}</p>
             )}
@@ -389,21 +388,23 @@ export default function PublicationsPage() {
         </div>
       ) : null}
 
-      {loading ? (
+      {loading && rows.length === 0 ? (
         <div className="flex flex-col gap-2" aria-busy="true" aria-label="Loading catalog">
           <div className="h-16 animate-pulse rounded-lg border border-zinc-200 bg-white" />
           <div className="h-64 animate-pulse rounded-lg border border-zinc-200 bg-white" />
         </div>
-      ) : loadError ? (
+      ) : loadError && rows.length === 0 ? (
         <div role="alert" className="flex flex-col items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-8 text-center">
           <p className="text-sm font-semibold">Could not load the catalog</p>
           <p className="text-sm text-zinc-500">{loadError}</p>
-          <Button variant="secondary" onClick={() => void refresh()}>Retry</Button>
+          <Button variant="secondary" onClick={() => void refresh(true)}>Retry</Button>
         </div>
-      ) : visible.length === 0 ? (
+      ) : total === 0 ? (
         <EmptyState title="No publications found" hint="Adjust the search or category filter." />
       ) : (
-        <div className="max-h-[min(50vh,28rem)] overflow-auto overscroll-contain rounded-lg border border-zinc-200 bg-white" role="region" aria-label="Publication catalog" tabIndex={0}>
+        <>
+        {loadError && <p role="alert" className="text-sm text-red-700">{loadError} <button type="button" className="underline" onClick={() => void refresh(true)}>Retry</button></p>}
+        <div aria-busy={loading} className={`max-h-[min(50vh,28rem)] overflow-auto overscroll-contain rounded-lg border border-zinc-200 bg-white ${loading ? "opacity-70" : ""}`} role="region" aria-label="Publication catalog" tabIndex={0}>
           <table className="w-full min-w-xl border-separate border-spacing-0 text-sm">
             <thead className="sticky top-0 z-10">
               <tr className="bg-[#314b3d] text-left text-white">
@@ -414,7 +415,7 @@ export default function PublicationsPage() {
               </tr>
             </thead>
             <tbody>
-              {pageRows.map((r) => (
+              {rows.map((r) => (
                 <tr key={r.key} className="bg-white">
                   <td className="border-b border-zinc-200 px-3 py-1.5 text-zinc-600">{r.itemNo || "—"}</td>
                   <td className="border-b border-zinc-200 px-3 py-1.5 font-medium">
@@ -446,7 +447,7 @@ export default function PublicationsPage() {
                               itemNo: r.itemNo,
                               name: parts.slice(2).join("::") || r.name,
                               section: r.section,
-                            }, !r.active).then(() => void refresh());
+                            }, !r.active).then(() => void refresh(true));
                           }}
                           className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs font-medium hover:bg-zinc-50"
                         >
@@ -460,14 +461,16 @@ export default function PublicationsPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
-      {!loading && !loadError && visible.length > 0 && (
+      {!loadError && total > 0 && (
         <Pagination
-          total={visible.length}
-          page={currentPage}
+          total={total}
+          page={page}
           pageSize={pageSize}
           onPageChange={setPage}
           onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          onPrefetchPage={prefetchPage}
         />
       )}
     </div>
